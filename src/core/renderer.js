@@ -18,7 +18,7 @@ export function createRenderer(canvas, quality) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   // Scenes tween `camera.position` and `cameraTarget`; the camera looks at the target every frame.
-  const HOME = { position: new THREE.Vector3(0, 0, 8), target: new THREE.Vector3(0, 0, 0) };
+  const HOME = { position: new THREE.Vector3(0, 0, 8), target: new THREE.Vector3(0, 0, 0), fov: 35 };
   const cameraTarget = HOME.target.clone();
   camera.position.copy(HOME.position);
 
@@ -72,6 +72,7 @@ export function createRenderer(canvas, quality) {
     const dt = timer.getDelta();
     const t = timer.getElapsed();
     tickers.forEach((fn) => fn(dt, t));
+    camera.updateProjectionMatrix(); // scenes may tween the fov
     camera.lookAt(cameraTarget);
     renderer.render(scene, camera);
   }

@@ -189,6 +189,33 @@ main {
   gap: calc(var(--space) * 3);
 }
 
+.links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space);
+}
+.icon {
+  width: calc(var(--space) * 2.5);
+  height: calc(var(--space) * 2.5);
+  flex: none;
+}
+/* Icon-only variant (scene 1): the label stays for screen readers. */
+.links--icons .link-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.links--icons a {
+  padding: var(--space);
+  color: var(--gray-on-dark);
+}
+.links--icons a:hover {
+  color: var(--mist);
+}
+
 .scroll-hint {
   position: absolute;
   bottom: calc(var(--space) * 4);

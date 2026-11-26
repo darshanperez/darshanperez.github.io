@@ -11,6 +11,7 @@ import { createRenderer } from './core/renderer.js';
 import { createScroll, createMasterTimeline } from './core/timeline.js';
 import { cue, syncCues } from './core/text.js';
 import { links } from './data/links.js';
+import { icon } from './data/icons.js';
 import { scenes } from './scenes/index.js';
 import { dur, ease, sec } from './styles/tokens.js';
 
@@ -26,7 +27,11 @@ function renderLinks() {
           const li = document.createElement('li');
           const a = document.createElement('a');
           a.href = l.url;
-          a.dataset.i18n = `link.${l.id}`;
+          a.innerHTML = icon(l.icon);
+          const label = document.createElement('span');
+          label.className = 'link-label';
+          label.dataset.i18n = `link.${l.id}`;
+          a.append(label);
           if (!l.url.startsWith('mailto:')) {
             a.target = '_blank';
             a.rel = 'noopener noreferrer';

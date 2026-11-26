@@ -1,15 +1,17 @@
 import * as THREE from 'three';
-import { colors, ease } from '../styles/tokens.js';
+import { ease } from '../styles/tokens.js';
 
-// Scene 2 — Profile: the photo as a 3D card that turns on its Y axis, showing
-// a dark back with an iris frame. Slight mouse tilt on desktop only.
+// Scene 2 — Profile: the photo as a 3D card that always faces the viewer and
+// turns slowly on its Y axis as you scroll (never far enough to show its
+// back). Slight mouse tilt on desktop only.
 
 const SIZE = 2.2;
+const TURN = 0.35; // radians each side of facing front
+
 let texture;
 let pivot; // layout + mouse tilt
 let spinner; // scroll-driven turn
-const fade = { opacity: 1 };
-const materials = [];
+let material;
 
 function visibleSize(camera, w, h) {
   const height = 2 * camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -27,23 +29,10 @@ export default {
   },
 
   init(ctx) {
-    const plane = new THREE.PlaneGeometry(SIZE, SIZE);
-    const frontMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7, transparent: true });
-    const backMat = new THREE.MeshStandardMaterial({ color: colors.graphite, metalness: 0.6, roughness: 0.4, transparent: true });
-    const frameMat = new THREE.LineBasicMaterial({ color: colors.accentOnDark, transparent: true, toneMapped: false });
-    materials.push(frontMat, backMat, frameMat);
-
-    const front = new THREE.Mesh(plane, frontMat);
-    const back = new THREE.Mesh(plane, backMat);
-    back.rotation.y = Math.PI;
-    back.position.z = -0.01;
-    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(SIZE * 0.86, SIZE * 0.86)), frameMat);
-    frame.rotation.y = Math.PI;
-    frame.position.z = -0.02;
-
+    material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7, transparent: true, opacity: 0 });
     spinner = new THREE.Group();
-    spinner.add(front, back, frame);
-    spinner.rotation.y = -Math.PI; // enters showing its back
+    spinner.add(new THREE.Mesh(new THREE.PlaneGeometry(SIZE, SIZE), material));
+    spinner.rotation.y = -TURN;
     pivot = new THREE.Group();
     pivot.add(spinner);
     pivot.scale.setScalar(0);
@@ -51,12 +40,11 @@ export default {
     ctx.act('profile').add(pivot);
 
     // Card left of the text on wide screens, above it on tall ones.
-    const layout = { x: 0, y: 0, s: 1 };
     ctx.onResize((w, h) => {
       const view = visibleSize(ctx.camera, w, h);
-      Object.assign(layout, w > h ? { x: -view.width * 0.2, y: 0, s: 1 } : { x: 0, y: view.height * 0.17, s: 0.75 });
-      pivot.position.set(layout.x, layout.y, 0);
-      pivot.userData.size = layout.s;
+      const wide = w > h;
+      pivot.position.set(wide ? -view.width * 0.2 : 0, wide ? 0 : view.height * 0.17, 0);
+      pivot.userData.size = wide ? 1 : 0.75;
     });
 
     if (!ctx.quality.mobile) {
@@ -68,27 +56,25 @@ export default {
       ctx.onTick((dt) => {
         if (!pivot.visible) return;
         const k = 1 - Math.pow(1 - 0.08, dt * 60); // frame-rate independent lerp
-        pivot.rotation.y += (mouse.x * 0.18 - pivot.rotation.y) * k;
-        pivot.rotation.x += (mouse.y * 0.12 - pivot.rotation.x) * k;
+        pivot.rotation.y += (mouse.x * 0.15 - pivot.rotation.y) * k;
+        pivot.rotation.x += (mouse.y * 0.1 - pivot.rotation.x) * k;
       });
     }
   },
 
   build(tl, ctx, { start, length }) {
     const at = (f) => start + length * f;
-    const size = () => pivot.userData.size;
-    const applyFade = () => materials.forEach((m) => (m.opacity = fade.opacity));
+    const size = (f = 1) => () => pivot.userData.size * f;
 
     tl.set(pivot, { visible: true }, start)
-      // Zoom from nothing while turning from its back to the photo.
-      .to(pivot.scale, { x: size, y: size, z: size, duration: length * 0.4, ease: ease.enter.gsap }, start)
-      .to(spinner.rotation, { y: 0, duration: length * 0.45, ease: ease.move.gsap }, start)
-      // Drift while the text is on screen.
-      .to(spinner.rotation, { y: 0.2, duration: length * 0.25, ease: ease.move.gsap }, at(0.45))
-      // Leave: keep turning, grow toward the camera, fade.
-      .to(spinner.rotation, { y: Math.PI * 0.6, duration: length * 0.3, ease: ease.exit.gsap }, at(0.7))
-      .to(pivot.scale, { x: () => size() * 1.15, y: () => size() * 1.15, z: () => size() * 1.15, duration: length * 0.3, ease: ease.exit.gsap }, at(0.7))
-      .to(fade, { opacity: 0, duration: length * 0.3, ease: ease.exit.gsap, onUpdate: applyFade }, at(0.7))
+      // Slow turn across the whole scene, photo always in front.
+      .to(spinner.rotation, { y: TURN, duration: length, ease: ease.move.gsap }, start)
+      // Zoom from nothing and fade in.
+      .to(pivot.scale, { x: size(), y: size(), z: size(), duration: length * 0.4, ease: ease.enter.gsap }, start)
+      .to(material, { opacity: 1, duration: length * 0.3, ease: ease.enter.gsap }, start)
+      // Leave toward the camera, fading.
+      .to(pivot.scale, { x: size(1.15), y: size(1.15), z: size(1.15), duration: length * 0.3, ease: ease.exit.gsap }, at(0.7))
+      .to(material, { opacity: 0, duration: length * 0.3, ease: ease.exit.gsap }, at(0.7))
       .set(pivot, { visible: false }, start + length);
 
     ctx.cue(ctx.layer('profile').querySelector('.cue'), at(0.35), at(0.72));

@@ -1,38 +1,46 @@
 import * as THREE from 'three';
-import { create as createServer, SIZE } from '../models/server.js';
+import { create as createServer } from '../models/server.js';
 import { colors, ease } from '../styles/tokens.js';
 
 // Scenes 3–5 — Servers.
-//   3 [0, 1.5)   three racks zoom in from nothing, low camera (contrapicado)
-//   4 [1.5, 2.5) racks settle, cables draw between them, full sentence
-//   5 [2.5, 4]   camera pushes into the central rack; side racks leave the frame
+//   3 [0, 1.5)   the three racks fly out of one point at the center and grow
+//                into place; wide-angle camera at floor height looking up, so
+//                they tower and taper and their undersides never show
+//   4 [1.5, 2.5) cables draw in, LEDs blink, camera creeps closer, full
+//                sentence; a black gradient comes down from the top
+//   5 [2.5, 4]   push-in: first to the rack's front filling the screen, then
+//                on into your face while everything fades to black
 
 const S3 = 1.5;
 const S4 = 1;
 const S5 = 1.5;
 
-const CENTER = 1.25;
-const SIDE = 0.85;
-const SIDE_X = 2.3;
-const FLOOR = -1.1; // racks stand on this line (bottoms aligned)
-const LAYOUT_WIDTH = 6.2; // world units the trio needs at scale 1
+const CENTER = { width: 1.3, height: 2.9, depth: 1.1 };
+const SIDE = { width: 1.1, height: 2.3, depth: 1.0 };
+const SIDE_X = 1.45;
+const SIDE_Z = 0.35;
+const SIDE_TURN = 0.38; // side racks face inward
 
-const LOW = { position: new THREE.Vector3(0, -1.7, 8.2), target: new THREE.Vector3(0, -0.35, 0) };
+// Wide lens at floor height, tilted up ~19°: tops narrower than bottoms, no undersides.
+const FOV = 75;
+const LOW = { position: new THREE.Vector3(0, 0.05, 3.0), target: new THREE.Vector3(0, 1.03, 0) };
+const ORIGIN = new THREE.Vector3(0, 2.6, -6); // where the racks fly out from
 
-let world; // whole trio (scaled to fit the viewport)
-const racks = []; // { holder, server, scale }
+let world;
+let racks = []; // { holder, server, turn }
 const cables = [];
-const settle = { y: 0.3 };
+const fit = { k: 1 }; // camera distance multiplier for narrow screens
 
 function cable(from, to) {
-  const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, -0.35, 0.15));
-  const curve = new THREE.CatmullRomCurve3([from, mid, to]);
-  const geometry = new THREE.TubeGeometry(curve, 48, 0.012, 6, false);
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: colors.accentOnDark, toneMapped: false }));
+  const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, -0.28, 0.22));
+  const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([from, mid, to]), 40, 0.011, 6, false);
   geometry.setDrawRange(0, 0);
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: colors.accentOnDark, toneMapped: false }));
   mesh.userData.count = geometry.index.count;
   return mesh;
 }
+
+const setDraw = (c, p) => c.geometry.setDrawRange(0, Math.round((p * c.userData.count) / 3) * 3);
 
 export default {
   id: 'servers',
@@ -40,96 +48,108 @@ export default {
 
   init(ctx) {
     world = new THREE.Group();
-    ctx.act('servers').add(world);
     world.visible = false;
+    ctx.act('servers').add(world);
+    const segments = ctx.quality.segments;
 
-    for (const [x, scale, turn] of [[-SIDE_X, SIDE, 0.25], [0, CENTER, 0], [SIDE_X, SIDE, -0.25]]) {
-      const server = createServer();
-      const holder = new THREE.Group(); // layout; `server.group` is animated
-      holder.position.set(x, FLOOR + (SIZE.height * scale) / 2, x === 0 ? 0 : -0.5);
+    const specs = [
+      { size: SIDE, x: -SIDE_X, z: SIDE_Z, turn: SIDE_TURN },
+      { size: CENTER, x: 0, z: 0, turn: 0 },
+      { size: SIDE, x: SIDE_X, z: SIDE_Z, turn: -SIDE_TURN },
+    ];
+    racks = specs.map(({ size, x, z, turn }) => {
+      const server = createServer(size, { segments });
+      const holder = new THREE.Group(); // final place; `server.group` animates inside it
+      holder.position.set(x, size.height / 2, z); // all stand on y = 0
       holder.rotation.y = turn;
-      server.group.scale.setScalar(0);
       holder.add(server.group);
       world.add(holder);
-      racks.push({ holder, server, scale });
-    }
+      return { holder, server, turn };
+    });
+    world.updateMatrixWorld(true);
 
-    // Two cables per side, from the side racks into the central one.
-    const sideFace = SIDE_X - (SIZE.width * SIDE) / 2;
-    const centerFace = (SIZE.width * CENTER) / 2;
-    for (const dir of [-1, 1]) {
-      for (const y of [0.45, -0.35]) {
-        const c = cable(new THREE.Vector3(dir * sideFace, y, 0.1), new THREE.Vector3(dir * centerFace, y + 0.1, 0.3));
+    // Two cables per side, drooping in front of the gaps.
+    const [left, center, right] = racks;
+    for (const [side, dir] of [[left, 1], [right, -1]]) {
+      for (const y of [0.55, -0.25]) {
+        const a = side.holder.localToWorld(new THREE.Vector3(dir * (SIDE.width / 2 - 0.12), y, SIDE.depth / 2 + 0.06));
+        const b = center.holder.localToWorld(new THREE.Vector3(-dir * (CENTER.width / 2 - 0.12), y + 0.2, CENTER.depth / 2 + 0.06));
+        const c = cable(a, b);
         world.add(c);
         cables.push(c);
       }
     }
 
+    // Start every rack at the shared origin, tiny, tipped like a diamond.
+    for (const r of racks) {
+      r.server.group.position.copy(r.holder.worldToLocal(ORIGIN.clone()));
+      r.server.group.scale.setScalar(0.04);
+      r.server.group.rotation.z = r.turn ? Math.sign(r.turn) * -0.7 : 0;
+    }
+
     ctx.onResize((w, h) => {
-      const view = 2 * LOW.position.z * Math.tan(THREE.MathUtils.degToRad(ctx.camera.fov / 2));
-      world.scale.setScalar(Math.min(1, (view * (w / h)) / LAYOUT_WIDTH));
+      // Keep most of the trio in frame on tall screens by backing the camera off.
+      const halfFov = THREE.MathUtils.degToRad(FOV / 2);
+      fit.k = Math.max(1, (0.8 * 2.3) / (Math.tan(halfFov) * (w / h)) / LOW.position.z);
     });
 
     ctx.onTick((dt, t) => {
-      if (!world.visible) return;
-      for (const r of racks) r.server.update(t);
-      world.position.y = settle.y;
+      if (world.visible) racks.forEach((r) => r.server.update(t));
     });
   },
 
   build(tl, ctx, { start }) {
     const s4 = start + S3;
     const s5 = s4 + S4;
-    const cam = ctx.camera.position;
+    const cam = ctx.camera;
     const target = ctx.cameraTarget;
+    const lowZ = () => LOW.position.z * fit.k;
 
     tl.set(world, { visible: true }, start);
 
-    // Scene 3 — low camera; racks zoom from nothing, center first.
-    tl.to(cam, { x: LOW.position.x, y: LOW.position.y, z: LOW.position.z, duration: 1, ease: ease.move.gsap }, start)
+    // Scene 3 — wide, low camera; racks fly out from the center point.
+    tl.to(cam, { fov: FOV, duration: 1, ease: ease.move.gsap }, start)
+      .to(cam.position, { x: 0, y: LOW.position.y, z: lowZ, duration: 1, ease: ease.move.gsap }, start)
       .to(target, { x: LOW.target.x, y: LOW.target.y, z: LOW.target.z, duration: 1, ease: ease.move.gsap }, start);
     [racks[1], racks[0], racks[2]].forEach((r, i) => {
-      tl.to(r.server.group.scale, { x: r.scale, y: r.scale, z: r.scale, duration: 0.9, ease: ease.enter.gsap }, start + 0.1 + i * 0.15);
+      const g = r.server.group;
+      const at = start + 0.1 + i * 0.1;
+      tl.to(g.position, { x: 0, y: 0, z: 0, duration: 1.1, ease: ease.enter.gsap }, at)
+        .to(g.scale, { x: 1, y: 1, z: 1, duration: 1.1, ease: ease.enter.gsap }, at)
+        .to(g.rotation, { z: 0, duration: 1.1, ease: ease.enter.gsap }, at);
     });
 
-    // Scene 4 — settle, then the cables draw in.
-    tl.to(settle, { y: 0, duration: 1.2, ease: ease.move.gsap }, start + 0.5);
+    // Scene 4 — cables draw in; the camera creeps closer so the racks grow.
     cables.forEach((c, i) => {
       const draw = { p: 0 };
-      tl.to(draw, {
-        p: 1,
-        duration: 0.6,
-        ease: ease.move.gsap,
-        onUpdate: () => c.geometry.setDrawRange(0, Math.round(draw.p * c.userData.count / 3) * 3),
-      }, s4 + 0.1 + (i % 2) * 0.15);
+      tl.to(draw, { p: 1, duration: 0.6, ease: ease.move.gsap, onUpdate: () => setDraw(c, draw.p) }, s4 + (i % 2) * 0.15);
     });
+    tl.to(cam.position, { z: () => lowZ() * 0.88, duration: S4, ease: ease.move.gsap }, s4)
+      .to(ctx.shade, { opacity: 1, duration: 1, ease: ease.move.gsap }, s4 + 0.5);
+
     const layer = ctx.layer('servers');
-    ctx.cue(layer.querySelector('[data-cue="pre"]'), start + 0.8, s5);
+    ctx.cue(layer.querySelector('[data-cue="pre"]'), start + 0.9, s5);
     ctx.cue(layer.querySelector('[data-cue="main"]'), s4 + 0.1, s5);
 
-    // Scene 5 — cables unplug, side racks leave the frame, camera pushes in
-    // until the central rack's front fills the screen (its side edges stay as
-    // two vertical lines running out of frame).
+    // Scene 5 — unplug, side racks leave, push in.
     cables.forEach((c) => {
       const draw = { p: 1 };
-      tl.to(draw, { p: 0, duration: 0.4, ease: ease.exit.gsap, onUpdate: () => c.geometry.setDrawRange(0, Math.round(draw.p * c.userData.count / 3) * 3) }, s5);
+      tl.to(draw, { p: 0, duration: 0.35, ease: ease.exit.gsap, onUpdate: () => setDraw(c, draw.p) }, s5);
     });
-    racks.forEach((r, i) => {
-      if (i === 1) return;
-      const dir = i === 0 ? -1 : 1;
-      tl.to(r.server.group.position, { x: dir * 3.5, z: 1, duration: 1, ease: ease.exit.gsap }, s5 + 0.1);
+    [racks[0], racks[2]].forEach((r, i) => {
+      tl.to(r.server.group.position, { x: (i ? 1 : -1) * 3, z: 1.5, duration: 0.9, ease: ease.exit.gsap }, s5 + 0.1);
     });
 
-    const center = () => {
-      const k = world.scale.x;
-      const height = SIZE.height * CENTER * k;
-      const y = (FLOOR + (SIZE.height * CENTER) / 2) * k;
-      const front = (SIZE.depth * CENTER * k) / 2 + 0.05;
-      // Show ~62% of the rack's height so its top and bottom run out of frame.
-      const distance = (height * 0.62) / (2 * Math.tan(THREE.MathUtils.degToRad(ctx.camera.fov / 2)));
-      return { y, front, distance };
-    };
-    tl.to(cam, { x: 0, y: () => center().y, z: () => center().front + center().distance, duration: S5, ease: ease.move.gsap }, s5)
-      .to(target, { x: 0, y: () => center().y, z: () => center().front, duration: S5, ease: ease.move.gsap }, s5);
+    const cy = CENTER.height / 2;
+    const front = CENTER.depth / 2 + 0.05;
+    // A: the front fills the screen; its side edges stay as two vertical lines.
+    const framed = () => (CENTER.height * 0.62) / (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+    tl.to(cam.position, { x: 0, y: cy, z: () => front + framed(), duration: 0.8, ease: ease.move.gsap }, s5)
+      .to(target, { x: 0, y: cy, z: front, duration: 0.8, ease: ease.move.gsap }, s5);
+    // B: keep going, into your face, widening the lens, while it all goes black.
+    tl.to(cam.position, { y: cy + 0.25, z: front + 0.12, duration: 0.7, ease: ease.exit.gsap }, s5 + 0.8)
+      .to(target, { y: cy + 0.25, duration: 0.7, ease: ease.exit.gsap }, s5 + 0.8)
+      .to(cam, { fov: 95, duration: 0.7, ease: ease.exit.gsap }, s5 + 0.8)
+      .to(ctx.fade, { opacity: 1, duration: 0.75, ease: ease.move.gsap }, s5 + 0.75);
   },
 };

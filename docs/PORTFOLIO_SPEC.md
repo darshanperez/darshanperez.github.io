@@ -177,24 +177,21 @@ Las longitudes de scroll son una **[ACEPTADA]** inicial; ajustarlas al probar.
 
 ### Acto 2 — Servidores
 
+> Escenas 3–5 revisadas por Darshan (26/11/2026). Sin luces de color, sin degradados y **sin cables/conexiones**: en esta etapa solo animación y 3D; los efectos visuales van en la fase 7 (§15).
+
 **Escena 3** · `scrollLength: 1.5`
-- Tres servidores 3D (rack, con **esquinas redondeadas** y detalle: bahías 1U/2U, discos, asas, LEDs) aparecen **desde un mismo punto central**: nacen diminutos ahí y viajan creciendo hasta su lugar, el central más grande y los laterales girados hacia el centro.
-- Cámara en **contrapicado**: lente angular a la altura del piso, mirando hacia arriba. Los racks se ven grandes, se estrechan hacia arriba y **nunca se ve su cara inferior**; el texto queda debajo de ellos (decisión de Darshan, 26/11/2026).
-- Aparece el texto "experience with".
+- Tres servidores 3D aparecen **desde un mismo punto central**: nacen diminutos ahí y viajan creciendo hasta su lugar. El central es más grande y va al frente; los laterales quedan **detrás** de él y **miran hacia su propio lado** (el izquierdo hacia la izquierda, el derecho hacia la derecha), no a la cámara. Si se tocan, no importa.
+- Cámara en **contrapicado**: lente angular a la altura del piso, mirando hacia arriba. Los racks se ven grandes, se estrechan hacia arriba y **nunca se ve su cara inferior**; el texto queda debajo de ellos.
+- Aparece el texto "Experience with".
 
-**Escena 4** · `scrollLength: 1`
-- Los servidores se asientan; aparecen **cables/conexiones** entre los laterales y el central (líneas que se dibujan con el scroll).
-- LEDs de los servidores parpadeando (idle).
-- La cámara se acerca un poco (los racks crecen) y baja un **degradado negro desde arriba**.
-- Texto completo: "Experience with / server management".
+**Escena 4** · `scrollLength: 0.8`
+- **Pausa**: nada se mueve (solo los LEDs, idle) y entra "server management" para leerlo.
 
-**Escena 5** · `scrollLength: 1.5`
-- La cámara hace **zoom hacia el servidor central** hasta que su frente llena la pantalla (los bordes laterales del rack quedan como dos líneas verticales que salen de cuadro).
-- **No se detiene ahí**: sigue empujando hasta quedar "en tu cara" (lente más abierta) mientras **todo se funde a negro** al mismo tiempo (decisión de Darshan, 26/11/2026).
-- Los laterales salen por los bordes.
+**Escena 5** · `scrollLength: 1.7`
+- **Un solo movimiento continuo, sin pausas**: los laterales salen por los bordes y la cámara empuja hacia el cristal del servidor central y sigue hasta quedar "en tu cara" (lente más abierta), mientras todo se funde a negro.
 
 **Escena 6** · `scrollLength: 0.5`
-- Negro total (el fundido ya ocurrió durante el zoom de la escena 5).
+- Negro total (el fundido ya ocurrió durante el empuje de la escena 5).
 
 ### Acto 3 — Ciberseguridad
 
@@ -246,7 +243,8 @@ Título fijo en la parte superior: **"The experience you need"**.
 
 **[PROPUESTA] Modelarlos de forma procedural en código** (Three.js primitives), estilo estilizado/minimal:
 
-- **Servidor**: caja principal + bahías frontales (cajas finas repetidas) + rejillas + LEDs (pequeñas esferas/planos emisivos que parpadean). Material oscuro metálico con bordes iluminados.
+- **Servidor**: objeto "tech" negro y minimalista, como un celular (decisión de Darshan, 26/11/2026): carcasa negra brillante con esquinas redondeadas, bisel delgado y **frente de cristal oscuro** que deja ver el hardware dentro (unidades delgadas con ranuras y LEDs pequeños que parpadean) y una banda de ventilación al pie. No caricaturesco; el realismo final llega en la fase 7.
+- Los modelos piden sus materiales por rol a `src/core/materials.js` (nunca crean los suyos), para que la fase 7 mejore todo el look en un solo lugar.
 - **Candado**: cuerpo (caja con bordes redondeados / `RoundedBoxGeometry`) + arco (`TorusGeometry` parcial o `TubeGeometry`) como **malla separada** con pivote para rotarlo/subirlo al abrir/cerrar + ojo de cerradura.
 
 Ventajas: peso ~0 KB, carga instantánea (importante en GitHub Pages y móvil), totalmente animable, estilo coherente.
@@ -383,6 +381,7 @@ Frase completa de los actos 2–3, leída en secuencia: *"Experience with server
 4. **Acto 4:** sistema de ventanas data-driven, principales/secundarias, luz + bloom, transición a blanco.
 5. **Acto 5:** marquee de skills + escena 15 completa.
 6. **Pulido:** móvil (iOS/Android reales), reduced motion, rendimiento, Lighthouse.
+7. **SFX (efectos visuales):** capa de realismo al final del proyecto, con referencia a renders tipo producto (metal negro brillante, reflejos y brillos dramáticos sobre fondo negro). Iluminación/HDRI, materiales realistas, post-procesado (bloom, viñeta, grano, profundidad de campo). Entra por dos puntos preparados desde antes: `src/core/fx.js` (pipeline de render, hoy un render directo) y `src/core/materials.js` (materiales por rol). Hasta esta fase: sin luces de color, brillos ni degradados decorativos.
 
 Cada fase termina con un deploy a Pages para revisar en el teléfono.
 

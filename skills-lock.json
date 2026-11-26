@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "scroll-experience": {
+      "source": "popey/claude-code-skills",
+      "commit": "a5a66011267ac6a6c3b030547a804184fa4f7cad",
+      "sourceType": "github",
+      "skillPath": "skills/scroll-experience/SKILL.md",
+      "computedHash": "597dc1e8289a97164a94dc4f53ce722a5981ee4da5a86333dab5a997d17548da"
+    }
+  }
+}

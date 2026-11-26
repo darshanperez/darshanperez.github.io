@@ -76,6 +76,7 @@ async function boot() {
     layer: (id) => container.querySelector(`[data-scene="${id}"]`),
     cue: (el, from, to) => cue(container, el, from, to),
   };
+  await Promise.all(scenes.map((s) => s.load?.(ctx)));
   createMasterTimeline({ scenes, ctx, container, stage: $('#stage') });
 
   // Scene 15: stop rendering WebGL and hide the canvas; hide Skip.

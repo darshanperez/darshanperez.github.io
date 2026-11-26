@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- SEO / link previews stay static and in English (§7). -->
+    <title>Darshan Perez — Portfolio</title>
+    <meta name="description" content="Darshan Perez, full-stack developer: server management with a cybersecurity approach." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Darshan Perez — Portfolio" />
+    <meta property="og:description" content="Full-stack developer: server management with a cybersecurity approach." />
+    <link rel="preload" href="/fonts/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body aria-busy="true">
+    <div id="loader" aria-hidden="true"><span class="loader-line"></span></div>
+
+    <canvas id="webgl" aria-hidden="true"></canvas>
+
+    <a id="skip" class="skip" href="#about" data-i18n="intro.skip" data-i18n-attr="aria-label:skip.aria"></a>
+
+    <main>
+      <section id="experience">
+        <div id="stage">
+          <div class="layer" data-scene="intro">
+            <h1 class="display cue" data-i18n="intro.title"></h1>
+            <ul class="links cue" data-links="intro"></ul>
+            <p class="scroll-hint cue" data-i18n="intro.scroll"></p>
+          </div>
+
+          <div class="layer layer--right" data-scene="profile">
+            <div class="cue">
+              <h2 class="title" data-line data-i18n="profile.role"></h2>
+              <p class="body secondary" data-line data-i18n="profile.desc"></p>
+            </div>
+          </div>
+
+          <div class="layer layer--low" data-scene="servers">
+            <p class="cue">
+              <span class="title secondary" data-line data-i18n="servers.pre"></span>
+              <span class="display" data-line data-i18n="servers.main"></span>
+            </p>
+          </div>
+
+          <div class="layer layer--low" data-scene="padlock">
+            <p class="display danger cue" data-i18n="security.main"></p>
+          </div>
+
+          <div class="layer layer--top" data-scene="projects">
+            <h2 class="heading cue" data-i18n="projects.heading"></h2>
+          </div>
+
+          <div class="layer on-light" data-scene="skills">
+            <h2 class="heading cue" data-i18n="skills.heading"></h2>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" tabindex="-1">
+        <header>
+          <h2 class="heading" data-i18n="about.name"></h2>
+          <p class="title secondary" data-i18n="about.subtitle"></p>
+        </header>
+        <a class="button" data-asset-href="cv/darshan-perez-resume.pdf" download data-i18n="about.resume"></a>
+        <ul class="links" data-links="about"></ul>
+        <div class="lang" role="group" data-i18n-attr="aria-label:about.lang">
+          <button type="button" data-lang="en" data-i18n="lang.en"></button>
+          <button type="button" data-lang="es" data-i18n="lang.es"></button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

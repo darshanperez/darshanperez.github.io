@@ -1,0 +1,23 @@
+key,en,es
+intro.title,Darshan's Portfolio,Portafolio de Darshan
+intro.skip,Skip the animation →,Saltar animación →
+intro.scroll,Scroll to explore,Desliza para explorar
+skip.aria,Skip the animation and go to the portfolio,Saltar la animación e ir al portafolio
+profile.role,Full-stack developer,Desarrollador full-stack
+profile.desc,"I build software end to end — from the interface people touch to the servers that keep it running.","Construyo software de principio a fin: desde la interfaz que usas hasta los servidores que la mantienen en pie."
+servers.pre,Experience with,Experiencia en
+servers.main,server management,administración de servidores
+security.main,with a cybersecurity approach,con enfoque en ciberseguridad
+projects.heading,The experience you need,La experiencia que necesitas
+skills.heading,Skills & Tools,Habilidades y herramientas
+about.name,Darshan Perez,Darshan Perez
+about.subtitle,Computer Science,Ciencias de la Computación
+about.resume,Download résumé,Descargar CV
+about.lang,Language,Idioma
+lang.en,EN,EN
+lang.es,ES,ES
+link.github,GitHub,GitHub
+link.linkedin,LinkedIn,LinkedIn
+link.email,Email,Correo
+link.codeforces,Codeforces,Codeforces
+link.modrinth,Modrinth,Modrinth

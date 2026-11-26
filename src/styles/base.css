@@ -177,7 +177,8 @@ main {
   opacity: 0;
   visibility: hidden;
 }
-[data-line] {
+[data-line],
+[data-cue] {
   display: block;
   transform-origin: center;
 }

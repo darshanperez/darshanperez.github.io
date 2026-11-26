@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { colors } from '../styles/tokens.js';
+import { createFx } from './fx.js';
 
 // One fullscreen canvas behind the HTML overlay (§3).
 export function createRenderer(canvas, quality) {
@@ -44,10 +45,12 @@ export function createRenderer(canvas, quality) {
   const key = new THREE.DirectionalLight(colors.mist, 2.2);
   key.position.set(3, 4, 5);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(colors.accentOnDark, 1.2);
+  // Neutral lighting only; colored light and effects belong to the SFX phase.
+  const rim = new THREE.DirectionalLight(colors.mist, 0.8);
   rim.position.set(-4, 2, -3);
   scene.add(rim);
 
+  const fx = createFx(renderer, scene, camera);
   const resizers = new Set();
   function resize() {
     // The canvas is sized by CSS (100lvh) so iOS's toolbar doesn't cause jumps.
@@ -56,6 +59,7 @@ export function createRenderer(canvas, quality) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    fx.resize(w, h);
     resizers.forEach((fn) => fn(w, h));
   }
   resize();
@@ -74,7 +78,7 @@ export function createRenderer(canvas, quality) {
     tickers.forEach((fn) => fn(dt, t));
     camera.updateProjectionMatrix(); // scenes may tween the fov
     camera.lookAt(cameraTarget);
-    renderer.render(scene, camera);
+    fx.render();
   }
 
   return {

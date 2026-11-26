@@ -15,6 +15,7 @@ export NPM_CONFIG_CACHE="$DEV/npm-cache"
 export NPM_CONFIG_PREFIX="$DEV/npm-global"
 export NPM_CONFIG_UPDATE_NOTIFIER=false
 export XDG_CACHE_HOME="$DEV/cache"
+export PLAYWRIGHT_BROWSERS_PATH="$DEV/ms-playwright"
 export PATH="$ROOT/node_modules/.bin:$DEV/npm-global/bin:$PATH"
 
 # Sourced: stop here and keep the current shell.

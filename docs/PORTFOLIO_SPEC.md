@@ -171,28 +171,30 @@ Las longitudes de scroll son una **[ACEPTADA]** inicial; ajustarlas al probar.
 - Al hacer scroll: el texto sale con fade.
 
 **Escena 2 — Perfil** · `scrollLength: 1.5`
-- Foto de perfil como **plano 3D** (textura) que rota sobre su eje Y; al girar mostrar un reverso (p. ej. el mismo plano oscuro con un borde/logo). Inclinación leve con el mouse (parallax), solo en escritorio.
+- Foto de perfil como **plano 3D** (textura) que rota **lentamente** sobre su eje Y mientras se hace scroll, **siempre de frente**: nunca se ve el reverso (decisión de Darshan, 26/11/2026). Inclinación leve con el mouse (parallax), solo en escritorio.
 - Texto a la derecha: rol + descripción corta.
 - Sale con fade.
 
 ### Acto 2 — Servidores
 
 **Escena 3** · `scrollLength: 1.5`
-- Tres servidores 3D (rack) aparecen **desde escala 0** (zoom from nothing), el central más grande.
-- Cámara en **contrapicado**: de frente pero desde abajo.
+- Tres servidores 3D (rack, con **esquinas redondeadas** y detalle: bahías 1U/2U, discos, asas, LEDs) aparecen **desde un mismo punto central**: nacen diminutos ahí y viajan creciendo hasta su lugar, el central más grande y los laterales girados hacia el centro.
+- Cámara en **contrapicado**: lente angular a la altura del piso, mirando hacia arriba. Los racks se ven grandes, se estrechan hacia arriba y **nunca se ve su cara inferior**; el texto queda debajo de ellos (decisión de Darshan, 26/11/2026).
 - Aparece el texto "experience with".
 
 **Escena 4** · `scrollLength: 1`
 - Los servidores se asientan; aparecen **cables/conexiones** entre los laterales y el central (líneas que se dibujan con el scroll).
 - LEDs de los servidores parpadeando (idle).
+- La cámara se acerca un poco (los racks crecen) y baja un **degradado negro desde arriba**.
 - Texto completo: "Experience with / server management".
 
 **Escena 5** · `scrollLength: 1.5`
 - La cámara hace **zoom hacia el servidor central** hasta que su frente llena la pantalla (los bordes laterales del rack quedan como dos líneas verticales que salen de cuadro).
+- **No se detiene ahí**: sigue empujando hasta quedar "en tu cara" (lente más abierta) mientras **todo se funde a negro** al mismo tiempo (decisión de Darshan, 26/11/2026).
 - Los laterales salen por los bordes.
 
 **Escena 6** · `scrollLength: 0.5`
-- Fundido total a negro.
+- Negro total (el fundido ya ocurrió durante el zoom de la escena 5).
 
 ### Acto 3 — Ciberseguridad
 

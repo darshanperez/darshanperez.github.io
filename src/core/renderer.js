@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { colors } from '../styles/tokens.js';
 
 // One fullscreen canvas behind the HTML overlay (§3).
@@ -16,7 +17,28 @@ export function createRenderer(canvas, quality) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.set(0, 0, 8);
+  // Scenes tween `camera.position` and `cameraTarget`; the camera looks at the target every frame.
+  const HOME = { position: new THREE.Vector3(0, 0, 8), target: new THREE.Vector3(0, 0, 0) };
+  const cameraTarget = HOME.target.clone();
+  camera.position.copy(HOME.position);
+
+  // Metal needs something to reflect: a neutral studio environment, kept dim.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.35;
+  pmrem.dispose();
+
+  // One group per act, so a later scene can hide a whole act at once.
+  const acts = new Map();
+  function act(name) {
+    if (!acts.has(name)) {
+      const g = new THREE.Group();
+      g.name = name;
+      scene.add(g);
+      acts.set(name, g);
+    }
+    return acts.get(name);
+  }
 
   scene.add(new THREE.AmbientLight(colors.mist, 0.6));
   const key = new THREE.DirectionalLight(colors.mist, 2.2);
@@ -26,6 +48,7 @@ export function createRenderer(canvas, quality) {
   rim.position.set(-4, 2, -3);
   scene.add(rim);
 
+  const resizers = new Set();
   function resize() {
     // The canvas is sized by CSS (100lvh) so iOS's toolbar doesn't cause jumps.
     const w = canvas.clientWidth;
@@ -33,6 +56,7 @@ export function createRenderer(canvas, quality) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    resizers.forEach((fn) => fn(w, h));
   }
   resize();
   window.addEventListener('resize', resize);
@@ -48,6 +72,7 @@ export function createRenderer(canvas, quality) {
     const dt = timer.getDelta();
     const t = timer.getElapsed();
     tickers.forEach((fn) => fn(dt, t));
+    camera.lookAt(cameraTarget);
     renderer.render(scene, camera);
   }
 
@@ -55,8 +80,16 @@ export function createRenderer(canvas, quality) {
     renderer,
     scene,
     camera,
+    cameraTarget,
+    HOME,
+    act,
     render,
     onTick: (fn) => tickers.add(fn),
+    /** Runs now and on every resize with the canvas size in CSS px. */
+    onResize(fn) {
+      resizers.add(fn);
+      fn(canvas.clientWidth, canvas.clientHeight);
+    },
     setEnabled(on) {
       enabled = on;
       canvas.style.visibility = on ? 'visible' : 'hidden';

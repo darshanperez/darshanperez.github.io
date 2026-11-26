@@ -13,7 +13,6 @@ export default {
       .set(ctx.camera.position, { x: ctx.HOME.position.x, y: ctx.HOME.position.y, z: ctx.HOME.position.z }, end)
       .set(ctx.cameraTarget, { x: ctx.HOME.target.x, y: ctx.HOME.target.y, z: ctx.HOME.target.z }, end)
       .set(ctx.camera, { fov: ctx.HOME.fov }, end)
-      .set(ctx.shade, { opacity: 0 }, end)
       .set(ctx.fade, { opacity: 0 }, end);
   },
 };

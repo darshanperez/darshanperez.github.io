@@ -1,50 +1,38 @@
 import * as THREE from 'three';
 import { create as createServer } from '../models/server.js';
-import { colors, ease } from '../styles/tokens.js';
+import { ease } from '../styles/tokens.js';
 
 // Scenes 3–5 — Servers.
-//   3 [0, 1.5)   the three racks fly out of one point at the center and grow
-//                into place; wide-angle camera at floor height looking up, so
-//                they tower and taper and their undersides never show
-//   4 [1.5, 2.5) cables draw in, LEDs blink, camera creeps closer, full
-//                sentence; a black gradient comes down from the top
-//   5 [2.5, 4]   push-in: first to the rack's front filling the screen, then
-//                on into your face while everything fades to black
+//   ENTER [0, 1.5)    the three racks fly out of one point at the center and
+//                     grow into place ("Experience with"); wide lens at floor
+//                     height looking up, so undersides never show
+//   HOLD  [1.5, 2.3)  a stop to read "server management"
+//   PUSH  [2.3, 4]    one continuous move, no stops: side racks leave, the
+//                     camera pushes into the central rack's glass and on into
+//                     your face while everything fades to black
 
-const S3 = 1.5;
-const S4 = 1;
-const S5 = 1.5;
+const ENTER = 1.5;
+const HOLD = 0.8;
+const PUSH = 1.7;
 
 const CENTER = { width: 1.3, height: 2.9, depth: 1.1 };
 const SIDE = { width: 1.1, height: 2.3, depth: 1.0 };
-const SIDE_X = 1.45;
-const SIDE_Z = 0.35;
-const SIDE_TURN = 0.38; // side racks face inward
+// Side racks stand behind the central one, each facing its own side.
+const SIDE_X = 1.5;
+const SIDE_Z = -0.7;
+const SIDE_TURN = 0.45;
 
-// Wide lens at floor height, tilted up ~19°: tops narrower than bottoms, no undersides.
 const FOV = 75;
 const LOW = { position: new THREE.Vector3(0, 0.05, 3.0), target: new THREE.Vector3(0, 1.03, 0) };
 const ORIGIN = new THREE.Vector3(0, 2.6, -6); // where the racks fly out from
 
 let world;
 let racks = []; // { holder, server, turn }
-const cables = [];
 const fit = { k: 1 }; // camera distance multiplier for narrow screens
-
-function cable(from, to) {
-  const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, -0.28, 0.22));
-  const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([from, mid, to]), 40, 0.011, 6, false);
-  geometry.setDrawRange(0, 0);
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: colors.accentOnDark, toneMapped: false }));
-  mesh.userData.count = geometry.index.count;
-  return mesh;
-}
-
-const setDraw = (c, p) => c.geometry.setDrawRange(0, Math.round((p * c.userData.count) / 3) * 3);
 
 export default {
   id: 'servers',
-  scrollLength: S3 + S4 + S5,
+  scrollLength: ENTER + HOLD + PUSH,
 
   init(ctx) {
     world = new THREE.Group();
@@ -53,9 +41,9 @@ export default {
     const segments = ctx.quality.segments;
 
     const specs = [
-      { size: SIDE, x: -SIDE_X, z: SIDE_Z, turn: SIDE_TURN },
+      { size: SIDE, x: -SIDE_X, z: SIDE_Z, turn: -SIDE_TURN }, // faces left
       { size: CENTER, x: 0, z: 0, turn: 0 },
-      { size: SIDE, x: SIDE_X, z: SIDE_Z, turn: -SIDE_TURN },
+      { size: SIDE, x: SIDE_X, z: SIDE_Z, turn: SIDE_TURN }, // faces right
     ];
     racks = specs.map(({ size, x, z, turn }) => {
       const server = createServer(size, { segments });
@@ -68,23 +56,11 @@ export default {
     });
     world.updateMatrixWorld(true);
 
-    // Two cables per side, drooping in front of the gaps.
-    const [left, center, right] = racks;
-    for (const [side, dir] of [[left, 1], [right, -1]]) {
-      for (const y of [0.55, -0.25]) {
-        const a = side.holder.localToWorld(new THREE.Vector3(dir * (SIDE.width / 2 - 0.12), y, SIDE.depth / 2 + 0.06));
-        const b = center.holder.localToWorld(new THREE.Vector3(-dir * (CENTER.width / 2 - 0.12), y + 0.2, CENTER.depth / 2 + 0.06));
-        const c = cable(a, b);
-        world.add(c);
-        cables.push(c);
-      }
-    }
-
     // Start every rack at the shared origin, tiny, tipped like a diamond.
     for (const r of racks) {
       r.server.group.position.copy(r.holder.worldToLocal(ORIGIN.clone()));
       r.server.group.scale.setScalar(0.04);
-      r.server.group.rotation.z = r.turn ? Math.sign(r.turn) * -0.7 : 0;
+      r.server.group.rotation.z = r.turn ? Math.sign(r.turn) * 0.7 : 0;
     }
 
     ctx.onResize((w, h) => {
@@ -99,17 +75,16 @@ export default {
   },
 
   build(tl, ctx, { start }) {
-    const s4 = start + S3;
-    const s5 = s4 + S4;
+    const hold = start + ENTER;
+    const push = hold + HOLD;
     const cam = ctx.camera;
     const target = ctx.cameraTarget;
-    const lowZ = () => LOW.position.z * fit.k;
 
     tl.set(world, { visible: true }, start);
 
-    // Scene 3 — wide, low camera; racks fly out from the center point.
+    // ENTER — wide, low camera; racks fly out from the center point.
     tl.to(cam, { fov: FOV, duration: 1, ease: ease.move.gsap }, start)
-      .to(cam.position, { x: 0, y: LOW.position.y, z: lowZ, duration: 1, ease: ease.move.gsap }, start)
+      .to(cam.position, { x: 0, y: LOW.position.y, z: () => LOW.position.z * fit.k, duration: 1, ease: ease.move.gsap }, start)
       .to(target, { x: LOW.target.x, y: LOW.target.y, z: LOW.target.z, duration: 1, ease: ease.move.gsap }, start);
     [racks[1], racks[0], racks[2]].forEach((r, i) => {
       const g = r.server.group;
@@ -119,37 +94,20 @@ export default {
         .to(g.rotation, { z: 0, duration: 1.1, ease: ease.enter.gsap }, at);
     });
 
-    // Scene 4 — cables draw in; the camera creeps closer so the racks grow.
-    cables.forEach((c, i) => {
-      const draw = { p: 0 };
-      tl.to(draw, { p: 1, duration: 0.6, ease: ease.move.gsap, onUpdate: () => setDraw(c, draw.p) }, s4 + (i % 2) * 0.15);
-    });
-    tl.to(cam.position, { z: () => lowZ() * 0.88, duration: S4, ease: ease.move.gsap }, s4)
-      .to(ctx.shade, { opacity: 1, duration: 1, ease: ease.move.gsap }, s4 + 0.5);
-
+    // HOLD — nothing moves but the status lights.
     const layer = ctx.layer('servers');
-    ctx.cue(layer.querySelector('[data-cue="pre"]'), start + 0.9, s5);
-    ctx.cue(layer.querySelector('[data-cue="main"]'), s4 + 0.1, s5);
+    ctx.cue(layer.querySelector('[data-cue="pre"]'), start + 0.9, push);
+    ctx.cue(layer.querySelector('[data-cue="main"]'), hold, push);
 
-    // Scene 5 — unplug, side racks leave, push in.
-    cables.forEach((c) => {
-      const draw = { p: 1 };
-      tl.to(draw, { p: 0, duration: 0.35, ease: ease.exit.gsap, onUpdate: () => setDraw(c, draw.p) }, s5);
-    });
+    // PUSH — a single accelerating move from the hold into the glass.
+    const center = racks[1].server.size;
+    const y = center.height / 2 + 0.25;
+    tl.to(cam.position, { x: 0, y, z: center.front + 0.15, duration: PUSH, ease: ease.exit.gsap }, push)
+      .to(target, { x: 0, y, z: center.front, duration: PUSH, ease: ease.exit.gsap }, push)
+      .to(cam, { fov: 95, duration: PUSH, ease: ease.exit.gsap }, push)
+      .to(ctx.fade, { opacity: 1, duration: PUSH * 0.45, ease: ease.move.gsap }, push + PUSH * 0.55);
     [racks[0], racks[2]].forEach((r, i) => {
-      tl.to(r.server.group.position, { x: (i ? 1 : -1) * 3, z: 1.5, duration: 0.9, ease: ease.exit.gsap }, s5 + 0.1);
+      tl.to(r.holder.position, { x: (i ? 1 : -1) * 4.5, duration: PUSH * 0.8, ease: ease.exit.gsap }, push);
     });
-
-    const cy = CENTER.height / 2;
-    const front = CENTER.depth / 2 + 0.05;
-    // A: the front fills the screen; its side edges stay as two vertical lines.
-    const framed = () => (CENTER.height * 0.62) / (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
-    tl.to(cam.position, { x: 0, y: cy, z: () => front + framed(), duration: 0.8, ease: ease.move.gsap }, s5)
-      .to(target, { x: 0, y: cy, z: front, duration: 0.8, ease: ease.move.gsap }, s5);
-    // B: keep going, into your face, widening the lens, while it all goes black.
-    tl.to(cam.position, { y: cy + 0.25, z: front + 0.12, duration: 0.7, ease: ease.exit.gsap }, s5 + 0.8)
-      .to(target, { y: cy + 0.25, duration: 0.7, ease: ease.exit.gsap }, s5 + 0.8)
-      .to(cam, { fov: 95, duration: 0.7, ease: ease.exit.gsap }, s5 + 0.8)
-      .to(ctx.fade, { opacity: 1, duration: 0.75, ease: ease.move.gsap }, s5 + 0.75);
   },
 };

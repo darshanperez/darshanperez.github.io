@@ -115,7 +115,9 @@ a:hover {
   pointer-events: none;
 }
 
-/* Scroll-driven fades to black (scene 6), between the canvas and the text. */
+/* Scroll-driven overlays between the canvas and the text: a black gradient
+   from the top (scene 4) and a full fade to black (scenes 5–6). */
+#shade,
 #fade {
   position: fixed;
   inset: 0;
@@ -123,6 +125,9 @@ a:hover {
   background: var(--ink);
   opacity: 0;
   pointer-events: none;
+}
+#shade {
+  background: linear-gradient(to bottom, var(--ink), transparent 60%);
 }
 
 main {

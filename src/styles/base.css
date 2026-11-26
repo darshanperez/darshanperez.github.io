@@ -115,6 +115,16 @@ a:hover {
   pointer-events: none;
 }
 
+/* Scroll-driven fades to black (scene 6), between the canvas and the text. */
+#fade {
+  position: fixed;
+  inset: 0;
+  height: 100lvh;
+  background: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+}
+
 main {
   position: relative;
   z-index: 1;

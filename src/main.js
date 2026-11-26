@@ -73,6 +73,7 @@ async function boot() {
     ...gl,
     quality,
     container,
+    fade: $('#fade'),
     layer: (id) => container.querySelector(`[data-scene="${id}"]`),
     cue: (el, from, to) => cue(container, el, from, to),
   };

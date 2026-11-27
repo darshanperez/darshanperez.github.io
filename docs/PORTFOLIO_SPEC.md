@@ -210,20 +210,22 @@ Las longitudes de scroll son una **[ACEPTADA]** inicial; ajustarlas al probar.
 
 Título fijo en la parte superior: **"The experience you need"**.
 
-**Mecánica (escenas 9–11)** · `scrollLength` = calculado: `~0.6 × número de proyectos`
-- Las "ventanas flotantes" (planos con video/imagen del proyecto + etiqueta con título y una línea de descripción) **nacen en el centro** (punto de fuga, lejos en Z) y **viajan hacia la cámara y hacia afuera**, saliendo por la izquierda o la derecha (alternando), con perspectiva/inclinación.
-- Mientras el usuario hace scroll, salen continuamente: efecto túnel.
-- Cada ventana lleva su propio texto (título + descripción corta), que entra y sale con ella.
-- **Principales**: más grandes, opacidad 1, en primer plano, son el foco.
-- **Secundarios**: ~55 % del tamaño, opacidad ~0.4, más atrás en Z, intercalados detrás de los principales.
-- Orden por defecto: el definido en `projects.js`.
+**Mecánica (escenas 9–11): beats** · `scrollLength` = calculado a partir de los beats (~2.3 viewports por proyecto principal)
 
-> Implementado en la fase 4 (26/11/2026), con indicaciones de Darshan:
-> - Ventanas con **esquinas redondeadas sutiles**; la media se recorta como `object-fit: cover`.
-> - El texto va **siempre debajo de cada ventana** (rol en mono, título, una línea de descripción). Es HTML real colocado en 3D con `CSS3DRenderer`, así que se traduce desde el CSV; una etiqueta se desvanece si una ventana más cercana la tapa. La etiqueta entra cuando la ventana se asienta y sale antes que ella.
-> - Media de ejemplo ligera (videos MP4 de 4 s y pósters WebP, abstractos en la paleta) en `public/media/projects/`; Darshan la reemplaza con sus grabaciones usando los mismos nombres. Ventanas sin video (`media: null`) muestran solo el póster.
-> - Etiquetas reescritas: título corto + rol/tecnología aparte (p. ej. "SIA · IFC UNAM" / "Full-stack developer"). El CSV es la fuente; las tablas de abajo quedan como referencia de ids.
-> - La luz de las escenas 11–12 es por ahora un disco blanco plano (`materials.light`), sin bloom ni halo: eso llega en la fase 7.
+> Revisado por Darshan (27/11/2026): cada ventana debe verse completa y quieta antes de cualquier cambio; los secundarios no pueden quedar tapados por el principal ni todos a la misma altura; el texto no desaparece antes que su ventana.
+
+Un **beat** por proyecto principal:
+1. El **principal** sale del punto de fuga (centro, lejos en Z) hacia su lado (izquierda/derecha, alternando por beat) y se asienta. Es el más grande y el único con opacidad 1.
+2. Sus **2–3 secundarios** llegan **uno tras otro** (nunca a la vez) al lado opuesto, cada uno a su propio hueco, a distintas alturas y en zig-zag.
+3. **Pausa**: todas las ventanas del beat están completas, quietas y legibles. Los huecos se calculan en pantalla a partir del espacio libre (junto al principal y bajo el título) y se traducen a posiciones 3D, así que en reposo nada se encima en ningún tamaño de pantalla.
+4. Los secundarios salen hacia la cámara y por su borde; cuando ya van de salida, el siguiente principal crece hacia ese lado. Luego sale el principal actual y los nuevos secundarios ocupan el lado que dejó libre.
+
+- **Etiquetas** (rol en mono, título, una línea de descripción) siempre **debajo de su ventana**: HTML real colocado en 3D con `CSS3DRenderer`, traducido desde el CSV. Entran cuando la ventana se asienta y **viajan con ella hasta que sale**. Solo durante los cruces, una etiqueta tapada por una ventana más cercana se desvanece.
+- **Relleno** (`kind: 'filler'`): ventanas pequeñas, tenues y lejanas que cruzan el fondo sin pararse y sin etiqueta, para saturar el túnel. Sí aparecen en la escena 15.
+- **Móvil (vertical)**: el principal abajo, los secundarios en una fila encima (solo título).
+- Esquinas redondeadas sutiles; la media se recorta como `object-fit: cover`. Ventanas sin video (`media: null`) muestran el póster.
+- Media de ejemplo ligera (MP4 de 4 s + pósters WebP, abstractos en la paleta) en `public/media/projects/`; Darshan la reemplaza con los mismos nombres.
+- La luz de las escenas 11–12 es por ahora un disco blanco plano (`materials.light`), sin bloom ni halo: eso llega en la fase 7.
 
 **Escena 11–12 — La luz** · `scrollLength: 1.5`
 - Tras el último proyecto aparece una **luz blanca** en el centro (sprite/esfera emisiva + bloom), crece mientras las últimas ventanas salen.
@@ -276,40 +278,33 @@ Diseñar los módulos `models/*.js` con la misma interfaz (`create() → { group
 export const projects = [
   {
     id: 'sia',                    // keys: project.sia.title / .role / .desc / .long
-    main: true,
-    media: 'media/projects/sia.webm',   // video loop muted (preferido) o imagen
+    kind: 'main',                 // 'main' | 'secondary' | 'filler'
+    media: 'media/projects/sia.mp4',    // video loop muted, o null (solo póster)
     poster: 'media/projects/sia.webp',
     tags: ['Full-stack'],
     links: { live: 'https://sia.ifc.unam.mx', repo: null },
   },
+  { id: 'luciernagas', kind: 'secondary', beat: 'sia', /* … */ },  // beat opcional
   // ...
 ];
 ```
 
-Agregar un proyecto = un objeto aquí + sus filas en el CSV + su media.
+Agregar un proyecto = un objeto aquí + sus filas en el CSV + su media. Los secundarios sin `beat` se reparten solos entre los beats con menos ventanas.
 
-**Principales**
-| id | Título |
+Lista de Darshan (27/11/2026), agrupada por beat:
+
+| Beat (principal) | Secundarios |
 |---|---|
-| `sia` | sia.ifc.unam.mx — Developer |
-| `airport-db` | Airport Database |
-| `distributed` | Distributed & Parallel Computing (C/MPI, Rust) |
-| `luciernagas` | Luciérnagas Festival — Product Manager |
-| `ai-model` | Own AI Models |
-| `cp-instructor` | Volunteer Instructor — Competitive Programming |
+| `sia` — SIA · IFC UNAM | `luciernagas` (Django), `ifc-classes` |
+| `distributed` — Distributed & Parallel Computing | `airport-db`, `ds-library` |
+| `ai-model` — Custom AI Model & API | `mini-lisp`, `cc-agents` |
+| `open-source` — Open Source | `minecraft` (Java modding), `cp-instructor` |
 
-**Secundarios**
-| id | Título |
-|---|---|
-| `tongue-kde` | Tongue — App for KDE |
-| `mini-lisp` | Mini Lisp Interpreter |
-| `open-source` | Open Source Contributions |
-| `minecraft` | Minecraft Java Modding |
-| `feria-unam` | 3rd Place — UNAM Science Fair 2023 |
-| `ds-library` | Data Structures Library |
-| `cc-skills` | Claude Code Skills |
+**Relleno**: `nixos`, `feria-unam`, `dotfiles`, `tongue-kde`, `java-libs`, `rust-counter`.
 
-**[PENDIENTE]** descripción de una línea + descripción larga (escena 15) + media de cada proyecto. Mientras tanto: placeholders.
+Ajustes para que cada beat tenga 2 secundarios: "Open source contributions" queda solo como principal; "Minecraft Java" y "minecraft modding" son un solo proyecto (secundario); `ds-library` y `cc-agents` suben de "otros" a secundarios.
+
+**[PENDIENTE]** descripción larga (escena 15) + media real de cada proyecto; las descripciones cortas son provisionales.
 
 **[PROPUESTA] Media:** usar **video WebM/MP4 en loop** (muted, `playsinline`) como `VideoTexture` en lugar de GIF: pesa 5–10× menos y se ve mejor. Máx. ~720 px de ancho, < 1.5 MB cada uno. Solo reproducir los videos de las ventanas visibles.
 

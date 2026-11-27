@@ -69,6 +69,7 @@ export function createRenderer(canvas, quality) {
   const timer = new THREE.Timer();
   timer.connect(document); // ignores time spent in a hidden tab
   const tickers = new Set(); // idle, clock-driven micro-animations
+  const overlays = new Set(); // drawn after the WebGL frame, with the same camera (e.g. CSS3D labels)
 
   function render() {
     timer.update();
@@ -79,6 +80,7 @@ export function createRenderer(canvas, quality) {
     camera.updateProjectionMatrix(); // scenes may tween the fov
     camera.lookAt(cameraTarget);
     fx.render();
+    overlays.forEach((fn) => fn(scene, camera));
   }
 
   return {
@@ -90,6 +92,8 @@ export function createRenderer(canvas, quality) {
     act,
     render,
     onTick: (fn) => tickers.add(fn),
+    /** Runs after every drawn frame with (scene, camera). */
+    onRender: (fn) => overlays.add(fn),
     /** Runs now and on every resize with the canvas size in CSS px. */
     onResize(fn) {
       resizers.add(fn);

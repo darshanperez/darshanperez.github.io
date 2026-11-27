@@ -15,7 +15,17 @@ export const materials = {
   recess: new THREE.MeshBasicMaterial({ color: colors.ink }),
   /** Status lights; per-instance colors, unaffected by tone mapping. */
   led: new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }),
+  /** The light at the end of the projects tunnel (scenes 11–12). Flat for now; bloom and halo arrive in the SFX phase. */
+  light: new THREE.MeshBasicMaterial({ color: colors.snow, toneMapped: false }),
 };
+
+/**
+ * Project window screen (scenes 9–11): the media as-is, no lighting. One per
+ * window because each has its own map; opacity is driven per window.
+ */
+export function screen(map) {
+  return new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0, toneMapped: false, depthWrite: false });
+}
 
 export const ledColors = {
   on: new THREE.Color(colors.accentOnDark),

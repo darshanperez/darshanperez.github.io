@@ -7,60 +7,104 @@ import { applyTranslations, onLangChange } from '../core/i18n.js';
 import { at } from '../core/text.js';
 import { colors, ease } from '../styles/tokens.js';
 
-// Scenes 9–13 — Projects.
-//   TUNNEL  floating windows are born far away at the center (the vanishing
-//           point) and travel toward the camera and out, alternating left and
-//           right. Main projects come in front; secondary ones are smaller,
-//           dimmer and further back, interleaved between them. Each window
-//           carries its own label (real HTML, placed in 3D with CSS3D).
-//   LIGHT   a white light is born at the center while the last windows leave
-//           and grows until it fills the screen. Flat on purpose: bloom and
-//           halo belong to the SFX phase (src/core/fx.js, materials.light).
-//   WHITE   the page background is white.
+// Scenes 9–13 — Projects, told in BEATS: one per main project.
+//
+//   1. The main window flies out of the vanishing point to its side
+//      (left / right, alternating per beat) and settles.
+//   2. Its 2–3 secondary windows arrive one after another on the other side,
+//      each into its own slot (stacked at different heights).
+//   3. HOLD: every window of the beat is fully on screen, still, readable.
+//      Slots are solved in screen space from the free area (beside the main,
+//      below the heading), so nothing overlaps at rest on any screen shape.
+//   4. The secondaries leave past the camera while the next main grows into
+//      the side they free; then this main leaves and the next secondaries
+//      take its side.
+//
+// Labels are real HTML placed in 3D with CSS3D and travel with their window
+// until it leaves. Fillers drift dim and far behind everything, unlabeled.
+//
+// After the last beat: a flat white light grows until it fills the screen
+// (bloom and halo belong to the SFX phase), then the page is white.
 
 const BASE = import.meta.env.BASE_URL;
-const TUNNEL = 0.6 * projects.length;
-const LIGHT = 1.5;
-const WHITE = 0.5;
-
-// One window's trip, in viewports of scroll. It approaches its reading spot
-// (ease-enter) and, before it fully settles, starts leaving past the camera
-// (ease-exit), so the tunnel never stops.
-const APPROACH = 1.4;
-const LEAVE_AT = 0.9; // the exit starts this far into the approach
-const EXIT = 1.1;
-const TRIP = LEAVE_AT + EXIT;
-const SPACING = (TUNNEL - TRIP) / Math.max(1, projects.length - 1);
 
 const RATIO = 16 / 10; // window aspect; media is cover-fitted into it
 const RADIUS = 0.025; // corner radius, relative to the width (subtle)
 const FAR_Z = -42; // the vanishing point
-const READ_Z = { main: 0, secondary: -5 };
-const OUT_Z = { main: 5.5, secondary: 4 };
-const TILT = { read: 0.18, out: 0.7 }; // windows turn to face the center
-const SECONDARY = { scale: 0.55, opacity: 0.4 };
+const DEPTH = { main: 0, secondary: -2.5, filler: -7 }; // z where each kind holds / passes
+const OUT_Z = { main: 6, secondary: 4, filler: -7 }; // z at the end of the exit
+const OPACITY = { main: 1, secondary: 0.55, filler: 0.22 };
+const TILT = { hold: 0.1, out: 0.55 }; // windows turn to face the center
 
-let world;
-let windows = []; // { project, main, side, group, material, label, video, state }
+// Timing, in viewports of scroll.
+// Exits accelerate (ease-exit), so each handoff waits until the windows that
+// own a side are well on their way out before new ones land there.
+const ARRIVE = 0.6; // vanishing point → slot
+const SEC_DELAY = 0.45; // first secondary arrives this long after the main (old main is leaving its side)
+const STAGGER = 0.25; // between the secondaries arriving
+const HOLD = 0.45; // everything in the beat on screen, still
+const LEAVE = 0.8; // slot → out past the camera
+const SEC_STAGGER = 0.1; // between the secondaries leaving
+const HANDOFF = 0.55; // the next main arrives this long after the secondaries start leaving
+const MAIN_LEAVES = 0.35; // the main leaves this long after its secondaries
+const FILLER_TRIP = 2.6;
+const LIGHT = 1.5;
+const WHITE = 0.5;
+
+// Where fillers drift to (screen directions): corners and edges.
+const FILLER_DIRS = [
+  [-1, 0.75],
+  [1, -0.8],
+  [0.35, 1],
+  [-0.9, -0.7],
+  [1, 0.6],
+  [-0.25, -1],
+];
+
+/** Mains in order, each with its secondaries; loose secondaries go to the emptiest beat. */
+function groupBeats() {
+  const beats = projects.filter((p) => p.kind === 'main').map((main) => ({ main, secondaries: [] }));
+  const byId = new Map(beats.map((b) => [b.main.id, b]));
+  const loose = [];
+  for (const p of projects.filter((p) => p.kind === 'secondary')) {
+    const beat = byId.get(p.beat);
+    if (beat) beat.secondaries.push(p);
+    else loose.push(p);
+  }
+  for (const p of loose) {
+    beats.reduce((min, b) => (b.secondaries.length < min.secondaries.length ? b : min)).secondaries.push(p);
+  }
+  return beats;
+}
+const BEATS = groupBeats();
+const FILLERS = projects.filter((p) => p.kind === 'filler');
+
+/** Start/leave times of each beat, relative to the scene start. */
+function schedule() {
+  let t = 0;
+  let end = 0;
+  const times = BEATS.map(({ secondaries }) => {
+    const start = t;
+    const lastArrival = secondaries.length ? SEC_DELAY + STAGGER * (secondaries.length - 1) : 0;
+    const leave = start + lastArrival + ARRIVE + HOLD;
+    t = leave + HANDOFF;
+    end = leave + MAIN_LEAVES + LEAVE;
+    return { start, leave };
+  });
+  return { times, tunnel: end };
+}
+const { times: BEAT_TIMES, tunnel: TUNNEL } = schedule();
+
+let windows = []; // every window: { project, kind, group, material, label?, video, hold, out, state, … }
+let beats = []; // { main: win, secondaries: [win], side }
+let fillers = [];
 let light;
 let css;
+let relayout = () => {};
 const posters = new Map(); // id → THREE.Texture
-const layout = { main: {}, secondary: {}, farY: 0 };
+const far = new THREE.Vector3(0, 0, FAR_Z);
 const corner = new THREE.Vector3();
 const scratch = {};
-
-/**
- * Label height in window-width units (1 unit = the label box's px width).
- * CSS3D only attaches an element on its first render, so measure lazily.
- */
-function labelHeight(w) {
-  if (w.labelHeight == null && w.label.element.isConnected) {
-    const box = parseFloat(w.label.element.style.width) || 1;
-    w.labelHeight = w.label.element.firstElementChild.offsetHeight / box;
-  }
-  return w.labelHeight ?? 0;
-}
-const remeasureLabels = () => windows.forEach((w) => (w.labelHeight = null));
 
 /** Rounded rectangle, width 1, centered, with UVs spanning 0..1. */
 function windowGeometry() {
@@ -98,22 +142,10 @@ function cover(texture, width, height) {
   }
 }
 
-/** Mains in their order, secondaries in theirs, spread evenly between them. */
-function sequence() {
-  const main = projects.filter((p) => p.main);
-  const secondary = projects.filter((p) => !p.main);
-  return [
-    ...main.map((p, i) => ({ p, k: (i + 0.25) / main.length })),
-    ...secondary.map((p, i) => ({ p, k: (i + 0.75) / secondary.length })),
-  ]
-    .sort((a, b) => a.k - b.k)
-    .map(({ p }) => p);
-}
-
 function labelElement(project) {
   const key = (k) => `project.${project.id}.${k}`;
   const el = document.createElement('div');
-  el.className = `window-label${project.main ? '' : ' window-label--secondary'}`;
+  el.className = `window-label window-label--${project.kind}`;
   el.innerHTML = `
     <div class="window-label__inner">
       <p class="window-label__role" data-i18n="${key('role')}"></p>
@@ -121,6 +153,8 @@ function labelElement(project) {
       <p class="window-label__desc" data-i18n="${key('desc')}"></p>
     </div>`;
   applyTranslations(el);
+  el.style.pointerEvents = 'none';
+  el.style.opacity = 0;
   return el;
 }
 
@@ -144,10 +178,208 @@ function createVideo(project, material) {
   return video;
 }
 
+function createWindow(project, geometry, parent, cameraElement) {
+  const material = screen(posters.get(project.id) ?? null);
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(geometry, material));
+  group.visible = false;
+  parent.add(group);
+
+  let label = null;
+  if (project.kind !== 'filler') {
+    label = new CSS3DObject(labelElement(project));
+    label.position.y = -0.5 / RATIO; // the label's top edge sits on the window's bottom edge
+    label.visible = false;
+    group.add(label);
+    cameraElement.append(label.element); // in the DOM from the start, so it can be measured
+  }
+
+  return {
+    project,
+    kind: project.kind,
+    group,
+    material,
+    label,
+    video: project.media ? createVideo(project, material) : null,
+    hold: new THREE.Vector3(),
+    out: new THREE.Vector3(),
+    width: 1, // world units
+    tilt: 1, // which way it turns (toward the center)
+    labelHeight: 0, // in window widths
+    covered: 0,
+    state: { a: 0, e: 0, o: 0, t: 0 }, // arrive, exit, opacity, label
+  };
+}
+
+// ——— Layout: slots in screen space, solved back into the 3D scene ———
+
+/**
+ * Lays out every window for a W×H canvas. Each window gets a screen slot
+ * (center + width in CSS px) at its kind's depth; that's turned into a 3D
+ * position and size, so the window lands exactly on its slot.
+ */
+function layout(ctx, W, H) {
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(ctx.HOME.fov / 2));
+  const camZ = ctx.HOME.position.z;
+  const halfH = (z) => (camZ - z) * tanHalf;
+  const halfW = (z) => halfH(z) * (W / H);
+  const pxPerUnit = (z) => H / (2 * halfH(z));
+  const ndc = (px, py) => ({ x: (px / W) * 2 - 1, y: 1 - (py / H) * 2 });
+
+  const heading = ctx.layer('projects').querySelector('.heading');
+  const top = heading.offsetTop + heading.offsetHeight + 24; // free area below the heading
+  const bottom = H - 32;
+  const availH = bottom - top;
+  const margin = Math.max(16, W * 0.06);
+  const portrait = W / H < 1.05;
+  css.domElement.classList.toggle('windows--compact', portrait);
+
+  // Vanishing point: the center of the free area.
+  far.set(0, ndc(0, (top + bottom) / 2).y * halfH(FAR_Z), FAR_Z);
+
+  /** Sets the label box to `px` wide and returns its height in px. */
+  function fit(w, px) {
+    if (!w.label) return 0;
+    const el = w.label.element;
+    el.style.width = `${px}px`;
+    w.label.scale.setScalar(1 / px);
+    const display = el.style.display;
+    el.style.display = ''; // CSS3D hides invisible objects with display: none
+    const h = el.firstElementChild.offsetHeight;
+    el.style.display = display;
+    w.labelHeight = h / px;
+    return h;
+  }
+
+  /** The exit point: past the edge of the screen along `dir`, near the camera. */
+  function exitAlong(w, [dx, dy]) {
+    const z = OUT_Z[w.kind];
+    const len = Math.hypot(dx, dy) || 1;
+    const hw = w.width / 2 / halfW(z);
+    const hh = (w.width / RATIO / 2 + w.labelHeight * w.width) / halfH(z);
+    const dist = 1.05 + Math.max(hw, hh) * 1.2;
+    w.out.set((dx / len) * dist * halfW(z), (dy / len) * dist * halfH(z), z);
+  }
+
+  /** Puts `w` on the slot centered at (cx, cy) px, `px` wide; it leaves along `dir`. */
+  function slot(w, cx, cy, px, dir) {
+    const z = DEPTH[w.kind];
+    const p = ndc(cx, cy);
+    w.hold.set(p.x * halfW(z), p.y * halfH(z), z);
+    w.width = px / pxPerUnit(z);
+    w.tilt = Math.sign(p.x) || Math.sign(dir[0]) || 1;
+    exitAlong(w, dir);
+  }
+
+  for (const beat of beats) {
+    const { main, secondaries, side } = beat;
+    const n = secondaries.length;
+
+    if (!portrait) {
+      // Main on its half; secondaries stacked on the other half, zig-zagging.
+      const gap = W * 0.04;
+      const regionW = W / 2 - margin - gap / 2;
+      let mw = Math.min(regionW, 760);
+      let mh = fit(main, mw);
+      if (mw / RATIO + mh > availH) {
+        mw = (availH - mh) * RATIO;
+        mh = fit(main, mw);
+      }
+      const mcx = side < 0 ? margin + regionW / 2 : W - margin - regionW / 2;
+      const mtop = top + (availH - (mw / RATIO + mh)) / 2;
+      slot(main, mcx, mtop + mw / RATIO / 2, mw, [ndc(mcx, 0).x + side, 0]);
+
+      const left = side < 0 ? W / 2 + gap / 2 : margin;
+      const rowH = availH / Math.max(1, n);
+      secondaries.forEach((s, i) => {
+        let sw = Math.min(regionW * 0.62, 420);
+        let sh = fit(s, sw);
+        if (sw / RATIO + sh > rowH - 8) {
+          sw = Math.max(120, (rowH - 8 - sh) * RATIO);
+          sh = fit(s, sw);
+        }
+        const f = n === 1 ? 0.5 : [0.1, 0.9, 0.5][i % 3]; // 0 = nearest the center
+        const cx = left + sw / 2 + (regionW - sw) * (side < 0 ? f : 1 - f);
+        const cy = top + i * rowH + (rowH - (sw / RATIO + sh)) / 2 + sw / RATIO / 2;
+        const p = ndc(cx, cy);
+        slot(s, cx, cy, sw, [p.x - side * 0.3, p.y]);
+      });
+    } else {
+      // Portrait: main at the bottom, secondaries in a row above it (title only).
+      const cw = W - 2 * margin;
+      let mw = cw;
+      let mh = fit(main, mw);
+      const maxBlock = availH * 0.6;
+      if (mw / RATIO + mh > maxBlock) {
+        mw = (maxBlock - mh) * RATIO;
+        mh = fit(main, mw);
+      }
+      const mtop = bottom - (mw / RATIO + mh);
+      const mcy = mtop + mw / RATIO / 2;
+      slot(main, W / 2, mcy, mw, [side, ndc(0, mcy).y * 0.5]);
+
+      const gap = 12;
+      const rowH = mtop - 16 - top;
+      let sw = (cw - gap * (n - 1)) / Math.max(1, n);
+      let sh = Math.max(0, ...secondaries.map((s) => fit(s, sw)));
+      if (sw / RATIO + sh > rowH) {
+        sw = Math.max(80, (rowH - sh) * RATIO);
+        sh = Math.max(0, ...secondaries.map((s) => fit(s, sw)));
+      }
+      const rowW = n * sw + (n - 1) * gap;
+      secondaries.forEach((s, i) => {
+        const cx = (W - rowW) / 2 + sw / 2 + i * (sw + gap);
+        const cy = top + (rowH - (sw / RATIO + sh)) / 2 + sw / RATIO / 2;
+        const p = ndc(cx, cy);
+        slot(s, cx, cy, sw, [p.x || side, Math.max(0.4, p.y)]);
+      });
+    }
+  }
+
+  // Fillers never hold: they drift from the vanishing point off screen.
+  const fw = Math.min(W, H * RATIO) * 0.16;
+  fillers.forEach((w, i) => {
+    const dir = FILLER_DIRS[i % FILLER_DIRS.length];
+    w.width = fw / pxPerUnit(DEPTH.filler);
+    w.tilt = Math.sign(dir[0]);
+    exitAlong(w, dir);
+  });
+}
+
+// ——— Per frame ———
+
+function place(w) {
+  const { a, e, o } = w.state;
+  const g = w.group;
+  if (w.kind === 'filler') {
+    g.position.lerpVectors(far, w.out, a);
+    g.rotation.y = -w.tilt * TILT.out * a;
+  } else {
+    // vanishing point → slot (a), then slot → out past the camera (e)
+    g.position.lerpVectors(far, w.hold, a);
+    g.position.x += (w.out.x - w.hold.x) * e;
+    g.position.y += (w.out.y - w.hold.y) * e;
+    g.position.z += (w.out.z - w.hold.z) * e;
+    g.rotation.y = -w.tilt * (TILT.hold * a + (TILT.out - TILT.hold) * e);
+  }
+  g.scale.setScalar(w.width);
+
+  const opacity = o * OPACITY[w.kind];
+  const visible = opacity > 0.002;
+  g.visible = visible;
+  w.material.opacity = opacity;
+  if (w.label) w.label.visible = visible && w.state.t > 0.002;
+
+  if (w.video) {
+    if (visible && w.video.paused) w.video.play().catch(() => {});
+    else if (!visible && !w.video.paused) w.video.pause();
+  }
+}
+
 /** Screen rect (NDC) of a window, optionally with its label below it. */
 function screenRect(w, camera, withLabel, out) {
   const top = 0.5 / RATIO;
-  const bottom = withLabel ? -top - labelHeight(w) : -top;
+  const bottom = withLabel ? -top - w.labelHeight : -top;
   out.x0 = out.y0 = Infinity;
   out.x1 = out.y1 = -Infinity;
   for (const [x, y] of [[-0.5, top], [0.5, top], [-0.5, bottom], [0.5, bottom]]) {
@@ -162,19 +394,20 @@ function screenRect(w, camera, withLabel, out) {
 
 /**
  * Labels are HTML over the canvas, so WebGL can't hide them behind a closer
- * window. Fade a label out while a closer window (or its label) covers it.
+ * window. While windows cross (arriving / leaving), fade a label that a
+ * closer window or its label covers. At rest, slots never overlap.
  */
 function occlude(camera, dt) {
-  const live = windows.filter((w) => w.group.visible);
+  const live = windows.filter((w) => w.label && w.group.visible);
   for (const w of live) {
     w.group.updateMatrixWorld();
-    w.rect = screenRect(w, camera, w.state.t > 0.05, w.rect ?? {}); // window (+ label while shown)
-    // label only: from the window's bottom edge down
+    w.rect = screenRect(w, camera, w.state.t > 0.05, w.rect ?? {});
     w.labelRect = screenRect(w, camera, true, w.labelRect ?? {});
-    w.labelRect.y1 = screenRect(w, camera, false, scratch).y0;
+    w.labelRect.y1 = screenRect(w, camera, false, scratch).y0; // label only: under the window
   }
   const k = 1 - Math.pow(1 - 0.2, dt * 60); // frame-rate independent lerp
   for (const w of windows) {
+    if (!w.label) continue;
     let covered = 0;
     if (w.group.visible) {
       const l = w.labelRect;
@@ -188,35 +421,7 @@ function occlude(camera, dt) {
       }
     }
     w.covered += (covered - w.covered) * k;
-    const L = w.main ? layout.main : layout.secondary;
-    w.label.element.style.opacity = w.state.t * L.opacity * (1 - w.covered);
-  }
-}
-
-function place(w) {
-  const L = w.main ? layout.main : layout.secondary;
-  const { a, e, o } = w.state;
-  const side = w.side;
-  // far → reading spot (a), then reading spot → out past the camera (e)
-  const rx = side * L.x;
-  const ox = side * L.xOut;
-  w.group.position.set(
-    rx * a + (ox - rx) * e,
-    layout.farY + (L.y - layout.farY) * a + (L.yOut - L.y) * e,
-    FAR_Z + (L.z - FAR_Z) * a + (L.zOut - L.z) * e,
-  );
-  w.group.rotation.y = -side * (TILT.read * a + (TILT.out - TILT.read) * e);
-  w.group.scale.setScalar(L.width);
-
-  const opacity = o * L.opacity;
-  const visible = opacity > 0.002;
-  w.group.visible = visible;
-  w.label.visible = visible;
-  w.material.opacity = opacity;
-
-  if (w.video) {
-    if (visible && w.video.paused) w.video.play().catch(() => {});
-    else if (!visible && !w.video.paused) w.video.pause();
+    w.label.element.style.opacity = w.state.t * (1 - w.covered);
   }
 }
 
@@ -241,100 +446,45 @@ export default {
   },
 
   init(ctx) {
-    world = ctx.act('projects');
+    const world = ctx.act('projects');
     const geometry = windowGeometry();
 
     // Labels: real HTML, drawn in 3D with the WebGL camera.
     css = new CSS3DRenderer();
     css.domElement.className = 'windows';
-    const layer = ctx.layer('projects');
-    layer.prepend(css.domElement);
+    ctx.layer('projects').prepend(css.domElement);
+    const cameraElement = css.domElement.firstElementChild.firstElementChild;
     ctx.onRender((scene, camera) => {
-      if (windows.some((w) => w.group.visible)) css.render(scene, camera);
+      if (windows.some((w) => w.label?.visible)) css.render(scene, camera);
     });
 
-    let lastMainSide = 1;
-    windows = sequence().map((project) => {
-      const material = screen(posters.get(project.id) ?? null);
-      const mesh = new THREE.Mesh(geometry, material);
-      const group = new THREE.Group();
-      group.add(mesh);
-      group.visible = false;
-
-      const label = new CSS3DObject(labelElement(project));
-      label.element.style.pointerEvents = 'none';
-      label.position.y = -0.5 / RATIO; // its top edge sits on the window's bottom edge
-      label.visible = false;
-      group.add(label);
-      world.add(group);
-
-      // Mains alternate sides; each secondary takes the side the last main left free.
-      let side;
-      if (project.main) side = lastMainSide = -lastMainSide;
-      else side = -lastMainSide;
-
-      const video = project.media ? createVideo(project, material) : null;
-      return { project, main: project.main, side, group, material, label, video, labelHeight: null, covered: 0, state: { a: 0, e: 0, o: 0, t: 0 } };
-    });
+    fillers = FILLERS.map((p) => createWindow(p, geometry, world, cameraElement));
+    beats = BEATS.map((b, i) => ({
+      main: createWindow(b.main, geometry, world, cameraElement),
+      secondaries: b.secondaries.map((p) => createWindow(p, geometry, world, cameraElement)),
+      side: i % 2 ? 1 : -1, // the main's side: left first, then alternating
+    }));
+    windows = [...fillers, ...beats.flatMap((b) => [b.main, ...b.secondaries])];
 
     light = new THREE.Mesh(new THREE.CircleGeometry(3, 64 * ctx.quality.segments), materials.light);
-    light.position.set(0, 0, FAR_Z);
     light.scale.setScalar(0);
     light.visible = false;
     world.add(light);
 
+    let size = [1, 1];
+    relayout = () => {
+      layout(ctx, ...size);
+      light.position.x = far.x;
+      light.position.y = far.y;
+    };
+    light.position.z = FAR_Z;
     ctx.onResize((w, h) => {
+      size = [w, h];
       css.setSize(w, h);
-      const aspect = w / h;
-      const wide = aspect > 1;
-      const halfFov = Math.tan(THREE.MathUtils.degToRad(ctx.HOME.fov / 2));
-      const view = (z) => {
-        const height = 2 * (ctx.HOME.position.z - z) * halfFov;
-        return { height, width: height * aspect };
-      };
-
-      const vm = view(READ_Z.main);
-      const mw = Math.min(3.4, vm.width * 0.8);
-      const mx = Math.max(0, vm.width / 2 - mw / 2 - 0.25) * 0.6;
-      layout.main = {
-        width: mw,
-        opacity: 1,
-        x: mx,
-        y: wide ? 0.15 : 0.1,
-        z: READ_Z.main,
-        xOut: mx + mw * 1.6 + 1,
-        yOut: 0,
-        zOut: OUT_Z.main,
-        px: h / vm.height, // CSS px per world unit at the reading spot
-      };
-
-      const vs = view(READ_Z.secondary);
-      const sw = mw * SECONDARY.scale;
-      const sx = Math.max(0, vs.width / 2 - sw / 2 - 0.4) * 0.75;
-      layout.secondary = {
-        width: sw,
-        opacity: SECONDARY.opacity,
-        x: sx,
-        y: vs.height * (wide ? 0.12 : 0.18),
-        z: READ_Z.secondary,
-        xOut: sx + sw * 2 + 2,
-        yOut: vs.height * 0.2,
-        zOut: OUT_Z.secondary,
-        px: h / vs.height,
-      };
-      layout.farY = 0.2;
-
-      // Size each label box to its window's on-screen width at the reading
-      // spot, so its text renders at the real type scale there.
-      for (const win of windows) {
-        const L = win.main ? layout.main : layout.secondary;
-        const px = L.width * L.px;
-        win.label.element.style.width = `${px}px`;
-        win.label.scale.setScalar(1 / px);
-      }
-      remeasureLabels();
+      relayout();
     });
-    onLangChange(remeasureLabels);
+    onLangChange(() => relayout());
+    document.fonts.ready.then(() => relayout());
 
     ctx.onTick((dt) => {
       windows.forEach(place);
@@ -343,23 +493,40 @@ export default {
   },
 
   build(tl, ctx, { start }) {
-    // TUNNEL — one trip per window, evenly spaced.
-    windows.forEach((w, i) => {
-      const s = start + i * SPACING;
-      const st = w.state;
-      tl.to(st, { a: 1, duration: APPROACH, ease: ease.enter.gsap }, s)
-        .to(st, { o: 1, duration: APPROACH * 0.4, ease: ease.enter.gsap }, s)
-        .to(st, { e: 1, duration: EXIT, ease: ease.exit.gsap }, s + LEAVE_AT)
-        .to(st, { o: 0, duration: EXIT * 0.4, ease: ease.exit.gsap }, s + LEAVE_AT + EXIT * 0.6)
-        // Its label arrives once the window has settled and leaves first, faster (§18.5).
-        .to(st, { t: 1, duration: APPROACH * 0.35, ease: ease.enter.gsap }, s + APPROACH * 0.3)
-        .to(st, { t: 0, duration: EXIT * 0.25, ease: ease.exit.gsap }, s + LEAVE_AT + EXIT * 0.1);
+    const arrive = (w, s) =>
+      tl
+        .to(w.state, { a: 1, duration: ARRIVE, ease: ease.enter.gsap }, s)
+        .to(w.state, { o: 1, duration: ARRIVE * 0.4, ease: ease.enter.gsap }, s)
+        // The label comes in once its window has (almost) settled (§18.5).
+        .to(w.state, { t: 1, duration: ARRIVE * 0.6, ease: ease.enter.gsap }, s + ARRIVE * 0.5);
+    const leave = (w, s) =>
+      tl
+        .to(w.state, { e: 1, duration: LEAVE, ease: ease.exit.gsap }, s)
+        // The label travels with its window and fades with it at the very end.
+        .to(w.state, { o: 0, t: 0, duration: LEAVE * 0.35, ease: ease.exit.gsap }, s + LEAVE * 0.65);
+
+    beats.forEach((beat, i) => {
+      const { start: b, leave: l } = BEAT_TIMES[i];
+      arrive(beat.main, start + b);
+      beat.secondaries.forEach((s, j) => arrive(s, start + b + SEC_DELAY + STAGGER * j));
+      beat.secondaries.forEach((s, j) => leave(s, start + l + SEC_STAGGER * j));
+      leave(beat.main, start + l + MAIN_LEAVES);
     });
+
+    // Fillers: spread over the tunnel, always drifting toward the camera.
+    const spacing = (TUNNEL - FILLER_TRIP) / Math.max(1, fillers.length - 1);
+    fillers.forEach((w, i) => {
+      const s = start + i * spacing;
+      tl.to(w.state, { a: 1, duration: FILLER_TRIP, ease: ease.exit.gsap }, s)
+        .to(w.state, { o: 1, duration: FILLER_TRIP * 0.25, ease: ease.enter.gsap }, s)
+        .to(w.state, { o: 0, duration: FILLER_TRIP * 0.2, ease: ease.exit.gsap }, s + FILLER_TRIP * 0.8);
+    });
+
     ctx.cue(ctx.layer('projects').querySelector('.cue'), start + 0.2, start + TUNNEL);
 
     // LIGHT — born at the vanishing point while the last windows leave, it
     // comes to the camera until it covers the screen; then the page turns white.
-    const lightAt = start + TUNNEL - 0.5;
+    const lightAt = start + TUNNEL - LEAVE * 0.6;
     const white = start + TUNNEL + LIGHT;
     const z = ctx.HOME.position.z - 1;
     tl.set(light, { visible: true }, lightAt)

@@ -233,6 +233,11 @@ main {
   line-height: var(--lh-caption);
   letter-spacing: var(--ls-caption);
 }
+/* Portrait: secondaries share a row above the main window, so they show their title only. */
+.windows--compact .window-label--secondary .window-label__role,
+.windows--compact .window-label--secondary .window-label__desc {
+  display: none;
+}
 
 /* Text starts hidden; core/text.js reveals it. */
 .cue {

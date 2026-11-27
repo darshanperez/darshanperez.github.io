@@ -218,6 +218,13 @@ Título fijo en la parte superior: **"The experience you need"**.
 - **Secundarios**: ~55 % del tamaño, opacidad ~0.4, más atrás en Z, intercalados detrás de los principales.
 - Orden por defecto: el definido en `projects.js`.
 
+> Implementado en la fase 4 (26/11/2026), con indicaciones de Darshan:
+> - Ventanas con **esquinas redondeadas sutiles**; la media se recorta como `object-fit: cover`.
+> - El texto va **siempre debajo de cada ventana** (rol en mono, título, una línea de descripción). Es HTML real colocado en 3D con `CSS3DRenderer`, así que se traduce desde el CSV; una etiqueta se desvanece si una ventana más cercana la tapa. La etiqueta entra cuando la ventana se asienta y sale antes que ella.
+> - Media de ejemplo ligera (videos MP4 de 4 s y pósters WebP, abstractos en la paleta) en `public/media/projects/`; Darshan la reemplaza con sus grabaciones usando los mismos nombres. Ventanas sin video (`media: null`) muestran solo el póster.
+> - Etiquetas reescritas: título corto + rol/tecnología aparte (p. ej. "SIA · IFC UNAM" / "Full-stack developer"). El CSV es la fuente; las tablas de abajo quedan como referencia de ids.
+> - La luz de las escenas 11–12 es por ahora un disco blanco plano (`materials.light`), sin bloom ni halo: eso llega en la fase 7.
+
 **Escena 11–12 — La luz** · `scrollLength: 1.5`
 - Tras el último proyecto aparece una **luz blanca** en el centro (sprite/esfera emisiva + bloom), crece mientras las últimas ventanas salen.
 - Crece hasta llenar la pantalla.

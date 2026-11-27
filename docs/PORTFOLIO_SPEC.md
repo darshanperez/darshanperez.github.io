@@ -215,7 +215,7 @@ Título fijo en la parte superior: **"The experience you need"**.
 > Revisado por Darshan (27/11/2026): cada ventana debe verse completa y quieta antes de cualquier cambio; los secundarios no pueden quedar tapados por el principal ni todos a la misma altura; el texto no desaparece antes que su ventana.
 
 Un **beat** por proyecto principal:
-1. El **principal** sale del punto de fuga (centro, lejos en Z) hacia su lado (izquierda/derecha, alternando por beat) y se asienta. Es el más grande y el único con opacidad 1.
+1. El **principal** sale del punto de fuga (centro, lejos en Z) hacia su lado (izquierda/derecha, alternando por beat) y se asienta. Es el más grande.
 2. Sus **2–3 secundarios** llegan **uno tras otro** (nunca a la vez) al lado opuesto, cada uno a su propio hueco, a distintas alturas y en zig-zag.
 3. **Pausa**: todas las ventanas del beat están completas, quietas y legibles. Los huecos se calculan en pantalla a partir del espacio libre (junto al principal y bajo el título) y se traducen a posiciones 3D, así que en reposo nada se encima en ningún tamaño de pantalla.
 4. Los secundarios salen hacia la cámara y por su borde; cuando ya van de salida, el siguiente principal crece hacia ese lado. Luego sale el principal actual y los nuevos secundarios ocupan el lado que dejó libre.

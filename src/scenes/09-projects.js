@@ -24,7 +24,8 @@ import { colors, ease } from '../styles/tokens.js';
 // hang on its walls, turned slightly toward the middle, and travel straight
 // along them (vanishing point → slot → past the camera). Labels are real HTML
 // placed in 3D with CSS3D and travel with their window until it leaves.
-// Fillers line both walls at many heights, dim and far, never stopping.
+// Fillers line both walls at many heights, dim and far, never stopping;
+// they carry a short label (role + title).
 //
 // After the last beat: a flat white light grows until it fills the screen
 // (bloom and halo belong to the SFX phase), then the page is white.
@@ -36,7 +37,9 @@ const RADIUS = 0.025; // corner radius, relative to the width (subtle)
 const FAR_Z = -42; // the vanishing point
 const DEPTH = { main: 0, secondary: -2.5, filler: -7 }; // z where each kind holds / passes
 const OUT_Z = { main: 6, secondary: 4, filler: -7 }; // z at the end of the exit
-const OPACITY = { main: 1, secondary: 0.55, filler: 0.3 };
+const OPACITY = { main: 1, secondary: 1, filler: 0.3 };
+const LABEL_OPACITY = { main: 1, secondary: 1, filler: 0.6 };
+const FILLER_LABEL_MIN = 180; // px: narrow filler windows (phones) still get a readable label
 const TILT = { hold: 0.28, out: 0.4 }; // like walls: turned slightly toward the middle
 
 // Timing, in viewports of scroll.
@@ -101,7 +104,6 @@ let light;
 let css;
 let relayout = () => {};
 const posters = new Map(); // id → THREE.Texture
-const far = new THREE.Vector3(0, 0, FAR_Z); // end of the corridor, where the light is born
 const corner = new THREE.Vector3();
 const scratch = {};
 
@@ -184,14 +186,11 @@ function createWindow(project, geometry, parent, cameraElement) {
   group.visible = false;
   parent.add(group);
 
-  let label = null;
-  if (project.kind !== 'filler') {
-    label = new CSS3DObject(labelElement(project));
-    label.position.y = -0.5 / RATIO; // the label's top edge sits on the window's bottom edge
-    label.visible = false;
-    group.add(label);
-    cameraElement.append(label.element); // in the DOM from the start, so it can be measured
-  }
+  const label = new CSS3DObject(labelElement(project));
+  label.position.y = -0.5 / RATIO; // the label's top edge sits on the window's bottom edge
+  label.visible = false;
+  group.add(label);
+  cameraElement.append(label.element); // in the DOM from the start, so it can be measured
 
   return {
     project,
@@ -234,14 +233,11 @@ function layout(ctx, W, H) {
   const portrait = W / H < 1.05;
   css.domElement.classList.toggle('windows--compact', portrait);
 
-  // Vanishing point: the center of the free area.
-  far.set(0, ndc(0, (top + bottom) / 2).y * halfH(FAR_Z), FAR_Z);
-
   /** Sets the label box to `px` wide and returns its height in px. */
-  function fit(w, px) {
+  function fit(w, px, minPx = px) {
     if (!w.label) return 0;
     const el = w.label.element;
-    el.style.width = `${px}px`;
+    el.style.width = `${Math.max(px, minPx)}px`;
     w.label.scale.setScalar(1 / px);
     const display = el.style.display;
     el.style.display = ''; // CSS3D hides invisible objects with display: none
@@ -347,6 +343,7 @@ function layout(ctx, W, H) {
     const x = side * (halfW(ref) * 0.9 - 0.2 * (i % 3));
     const y = FILLER_HEIGHTS[i % FILLER_HEIGHTS.length] * halfH(ref) * 0.8;
     w.width = fw / pxPerUnit(ref);
+    fit(w, fw, FILLER_LABEL_MIN);
     w.tilt = side;
     w.from.set(x, y, FAR_Z);
     w.out.set(x, y, FILLER_END_Z);
@@ -408,7 +405,7 @@ function occlude(camera, dt) {
   const live = windows.filter((w) => w.label && w.group.visible);
   for (const w of live) {
     w.group.updateMatrixWorld();
-    w.rect = screenRect(w, camera, w.state.t > 0.05, w.rect ?? {});
+    w.rect = screenRect(w, camera, w.state.t > 0.05 || w.kind === 'filler', w.rect ?? {});
     w.labelRect = screenRect(w, camera, true, w.labelRect ?? {});
     w.labelRect.y1 = screenRect(w, camera, false, scratch).y0; // label only: under the window
   }
@@ -417,18 +414,23 @@ function occlude(camera, dt) {
     if (!w.label) continue;
     let covered = 0;
     if (w.group.visible) {
-      const l = w.labelRect;
+      // A filler is background: it steps aside entirely (window and label)
+      // as soon as it crosses behind a focused window or its text.
+      const filler = w.kind === 'filler';
+      const l = filler ? w.rect : w.labelRect;
       const area = Math.max(1e-6, (l.x1 - l.x0) * (l.y1 - l.y0));
       for (const v of live) {
         if (v === w || v.group.position.z <= w.group.position.z) continue;
+        if (filler && v.kind === 'filler') continue;
         const r = v.rect;
         const ix = Math.min(l.x1, r.x1) - Math.max(l.x0, r.x0);
         const iy = Math.min(l.y1, r.y1) - Math.max(l.y0, r.y0);
-        if (ix > 0 && iy > 0 && (ix * iy) / area > 0.15) covered = 1;
+        if (ix > 0 && iy > 0 && (filler || (ix * iy) / area > 0.15)) covered = 1;
       }
     }
     w.covered += (covered - w.covered) * k;
-    w.label.element.style.opacity = w.state.t * (1 - w.covered);
+    w.label.element.style.opacity = w.state.t * (1 - w.covered) * LABEL_OPACITY[w.kind];
+    if (w.kind === 'filler') w.material.opacity *= 1 - w.covered;
   }
 }
 
@@ -482,10 +484,9 @@ export default {
     let size = [1, 1];
     relayout = () => {
       layout(ctx, ...size);
-      light.position.x = far.x;
-      light.position.y = far.y;
     };
-    light.position.z = FAR_Z;
+    // The end of the corridor: dead center of the screen.
+    light.position.set(ctx.HOME.position.x, ctx.HOME.position.y, FAR_Z);
     ctx.onResize((w, h) => {
       size = [w, h];
       css.setSize(w, h);
@@ -526,8 +527,8 @@ export default {
     fillers.forEach((w, i) => {
       const s = start + i * spacing;
       tl.to(w.state, { a: 1, duration: FILLER_TRIP, ease: ease.exit.gsap }, s)
-        .to(w.state, { o: 1, duration: FILLER_TRIP * 0.25, ease: ease.enter.gsap }, s)
-        .to(w.state, { o: 0, duration: FILLER_TRIP * 0.12, ease: ease.exit.gsap }, s + FILLER_TRIP * 0.88);
+        .to(w.state, { o: 1, t: 1, duration: FILLER_TRIP * 0.25, ease: ease.enter.gsap }, s)
+        .to(w.state, { o: 0, t: 0, duration: FILLER_TRIP * 0.12, ease: ease.exit.gsap }, s + FILLER_TRIP * 0.88);
     });
 
     ctx.cue(ctx.layer('projects').querySelector('.cue'), start + 0.2, start + LIGHT_AT + 0.4);

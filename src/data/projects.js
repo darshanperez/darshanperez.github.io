@@ -3,8 +3,8 @@
 // public/ and resolved with import.meta.env.BASE_URL.
 //
 //   kind:   'main'      — the focus of a beat: large, in front, full opacity
-//           'secondary' — 2–3 per beat, on the other side, smaller and dimmer
-//           'filler'    — background windows that fill the tunnel; no label
+//           'secondary' — 2–3 per beat, on the other side, smaller
+//           'filler'    — background windows that fill the corridor; small label
 //   beat:   (secondary only, optional) id of the main project it appears
 //           with. Without it, secondaries are shared out evenly.
 //   media:  looping muted video (mp4/webm), or null for an image-only window
@@ -35,11 +35,23 @@ export const projects = [
   { id: 'minecraft', kind: 'secondary', beat: 'open-source', ...m('minecraft', false), tags: [], links: { live: 'https://modrinth.com/user/darshanperez', repo: null } },
   { id: 'cp-instructor', kind: 'secondary', beat: 'open-source', ...m('cp-instructor'), tags: [], links: none },
 
-  // Filler — background only (still listed in scene 15)
+  // Filler — background only (still listed in scene 15). Interleaved: real
+  // projects, then [EXAMPLE] ones (typical small CS-grad projects) that only
+  // fill the corridor until Darshan replaces or removes them.
   { id: 'nixos', kind: 'filler', ...m('nixos', false), tags: [], links: none },
+  { id: 'chip8-emu', kind: 'filler', example: true, ...m('chip8-emu', false), tags: [], links: none },
   { id: 'feria-unam', kind: 'filler', ...m('feria-unam', false), tags: [], links: none },
+  { id: 'raytracer', kind: 'filler', example: true, ...m('raytracer', false), tags: [], links: none },
   { id: 'dotfiles', kind: 'filler', ...m('dotfiles', false), tags: [], links: none },
+  { id: 'sudoku-solver', kind: 'filler', example: true, ...m('sudoku-solver', false), tags: [], links: none },
   { id: 'tongue-kde', kind: 'filler', ...m('tongue-kde', false), tags: [], links: none },
+  { id: 'socket-chat', kind: 'filler', example: true, ...m('socket-chat', false), tags: [], links: none },
   { id: 'java-libs', kind: 'filler', ...m('java-libs', false), tags: [], links: none },
+  { id: 'pathfinding', kind: 'filler', example: true, ...m('pathfinding', false), tags: [], links: none },
   { id: 'rust-counter', kind: 'filler', ...m('rust-counter', false), tags: [], links: none },
+  { id: 'game-of-life', kind: 'filler', example: true, ...m('game-of-life', false), tags: [], links: none },
+  { id: 'markov-text', kind: 'filler', example: true, ...m('markov-text', false), tags: [], links: none },
+  { id: 'url-shortener', kind: 'filler', example: true, ...m('url-shortener', false), tags: [], links: none },
+  { id: 'huffman', kind: 'filler', example: true, ...m('huffman', false), tags: [], links: none },
+  { id: 'mini-shell', kind: 'filler', example: true, ...m('mini-shell', false), tags: [], links: none },
 ];

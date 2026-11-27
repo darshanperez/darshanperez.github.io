@@ -76,3 +76,33 @@ project.java-libs.desc,Small reusable libraries for Java projects.,Bibliotecas p
 project.rust-counter.title,Counter in Rust,Contador en Rust
 project.rust-counter.role,Rust,Rust
 project.rust-counter.desc,A small counter program written in Rust.,Un pequeño programa contador escrito en Rust.
+project.chip8-emu.title,CHIP-8 Emulator,Emulador de CHIP-8
+project.chip8-emu.role,C · SDL,C · SDL
+project.chip8-emu.desc,An interpreter for the classic CHIP-8 virtual machine.,Un intérprete para la clásica máquina virtual CHIP-8.
+project.raytracer.title,Ray Tracer,Trazador de rayos
+project.raytracer.role,C++ · Graphics,C++ · Gráficos
+project.raytracer.desc,"Spheres, reflections and soft shadows, from scratch.","Esferas, reflejos y sombras suaves, desde cero."
+project.sudoku-solver.title,Sudoku Solver,Solucionador de sudoku
+project.sudoku-solver.role,Python · Backtracking,Python · Backtracking
+project.sudoku-solver.desc,Solves any sudoku with backtracking and constraint propagation.,Resuelve cualquier sudoku con backtracking y propagación de restricciones.
+project.socket-chat.title,Socket Chat,Chat con sockets
+project.socket-chat.role,Java · TCP,Java · TCP
+project.socket-chat.desc,A multi-client chat server over plain TCP sockets.,Un servidor de chat multicliente sobre sockets TCP.
+project.pathfinding.title,Pathfinding Visualizer,Visualizador de rutas
+project.pathfinding.role,JavaScript · A*,JavaScript · A*
+project.pathfinding.desc,"Watch BFS, Dijkstra and A* explore a grid.","Mira a BFS, Dijkstra y A* explorar una cuadrícula."
+project.game-of-life.title,Game of Life,Juego de la vida
+project.game-of-life.role,WebGL · Cellular automata,WebGL · Autómatas celulares
+project.game-of-life.desc,Conway's Game of Life running on the GPU.,El Juego de la vida de Conway corriendo en la GPU.
+project.markov-text.title,Markov Text Generator,Generador de texto de Markov
+project.markov-text.role,Python · NLP,Python · PLN
+project.markov-text.desc,Writes new sentences from the style of a text.,Escribe frases nuevas con el estilo de un texto.
+project.url-shortener.title,URL Shortener,Acortador de URL
+project.url-shortener.role,Go · REST,Go · REST
+project.url-shortener.desc,A tiny URL shortener with a REST API.,Un pequeño acortador de URL con API REST.
+project.huffman.title,Huffman Compressor,Compresor Huffman
+project.huffman.role,C · Algorithms,C · Algoritmos
+project.huffman.desc,Compresses files with Huffman coding.,Comprime archivos con codificación de Huffman.
+project.mini-shell.title,Unix Shell,Shell de Unix
+project.mini-shell.role,C · Systems,C · Sistemas
+project.mini-shell.desc,"A small shell with pipes, redirection and jobs.","Una shell pequeña con tuberías, redirecciones y trabajos."

@@ -233,6 +233,21 @@ main {
   line-height: var(--lh-caption);
   letter-spacing: var(--ls-caption);
 }
+/* Fillers: background windows that never stop, so only role and title. */
+.window-label--filler .window-label__inner {
+  padding-top: var(--space-fine);
+  gap: 0;
+}
+.window-label--filler .window-label__title {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: var(--ls-caption);
+  font-weight: 600;
+}
+.window-label--filler .window-label__desc {
+  display: none;
+}
 /* Portrait: secondaries share a row above the main window, so they show their title only. */
 .windows--compact .window-label--secondary .window-label__role,
 .windows--compact .window-label--secondary .window-label__desc {

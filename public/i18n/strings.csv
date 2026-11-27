@@ -25,39 +25,54 @@ link.modrinth,Modrinth,Modrinth
 project.sia.title,SIA · IFC UNAM,SIA · IFC UNAM
 project.sia.role,Full-stack developer,Desarrollador full-stack
 project.sia.desc,"Institutional web platform, built and maintained end to end.","Plataforma web institucional, construida y mantenida de punta a punta."
-project.airport-db.title,Airport Database,Base de datos aeroportuaria
-project.airport-db.role,Database design,Diseño de bases de datos
-project.airport-db.desc,"Relational model and queries for flights, crews and passengers.","Modelo relacional y consultas para vuelos, tripulaciones y pasajeros."
 project.distributed.title,Distributed & Parallel Computing,Cómputo distribuido y paralelo
 project.distributed.role,C · MPI · Rust,C · MPI · Rust
 project.distributed.desc,Splitting heavy workloads across cores and machines.,Repartir cargas pesadas entre núcleos y máquinas.
-project.luciernagas.title,Luciérnagas Festival,Festival Luciérnagas
-project.luciernagas.role,Product manager,Product manager
-project.luciernagas.desc,"Led the product from idea to launch, with design and engineering.","Llevé el producto de la idea al lanzamiento, junto a diseño e ingeniería."
-project.ai-model.title,Custom AI Models,Modelos de IA propios
-project.ai-model.role,Machine learning,Aprendizaje automático
-project.ai-model.desc,"Training and evaluating my own models, from data to inference.","Entreno y evalúo mis propios modelos, de los datos a la inferencia."
-project.cp-instructor.title,Competitive Programming,Programación competitiva
-project.cp-instructor.role,Volunteer instructor,Instructor voluntario
-project.cp-instructor.desc,Teaching algorithms and problem solving to new contestants.,Enseño algoritmos y resolución de problemas a nuevos competidores.
-project.tongue-kde.title,Tongue for KDE,Tongue para KDE
-project.tongue-kde.role,Desktop app,App de escritorio
-project.tongue-kde.desc,A native app for the KDE Plasma desktop.,Una app nativa para el escritorio KDE Plasma.
-project.mini-lisp.title,Mini Lisp Interpreter,Intérprete de Mini Lisp
-project.mini-lisp.role,Language design,Diseño de lenguajes
-project.mini-lisp.desc,"A small Lisp: parser, evaluator and REPL.","Un Lisp pequeño: parser, evaluador y REPL."
+project.ai-model.title,Custom AI Model & API,Modelo de IA propio y API
+project.ai-model.role,Machine learning · API,Aprendizaje automático · API
+project.ai-model.desc,"My own model, trained end to end and served through an API.","Un modelo propio, entrenado de principio a fin y servido mediante una API."
 project.open-source.title,Open Source,Código abierto
 project.open-source.role,Contributions,Contribuciones
 project.open-source.desc,Fixes and features for tools I use every day.,Correcciones y mejoras para herramientas que uso a diario.
-project.minecraft.title,Minecraft Java Mods,Mods de Minecraft Java
-project.minecraft.role,Modding,Modding
-project.minecraft.desc,"Mods for Minecraft: Java Edition, published on Modrinth.","Mods para Minecraft: Java Edition, publicados en Modrinth."
-project.feria-unam.title,UNAM Science Fair 2023,Feria de Ciencias UNAM 2023
-project.feria-unam.role,3rd place,3.er lugar
-project.feria-unam.desc,Awarded third place among university projects.,Tercer lugar entre los proyectos universitarios.
+project.luciernagas.title,Luciérnagas Festival,Festival Luciérnagas
+project.luciernagas.role,Django,Django
+project.luciernagas.desc,"The festival's web platform, built with Django.","La plataforma web del festival, hecha con Django."
+project.ifc-classes.title,IFC Classes,Clases IFC
+project.ifc-classes.role,Teaching,Docencia
+project.ifc-classes.desc,"Classes and workshops at IFC, UNAM.","Clases y talleres en el IFC, UNAM."
+project.airport-db.title,Airport Database,Base de datos aeroportuaria
+project.airport-db.role,Database design,Diseño de bases de datos
+project.airport-db.desc,"Relational model and queries for flights, crews and passengers.","Modelo relacional y consultas para vuelos, tripulaciones y pasajeros."
 project.ds-library.title,Data Structures Library,Biblioteca de estructuras de datos
 project.ds-library.role,Library,Biblioteca
 project.ds-library.desc,"Reusable, tested data structures for fast code.","Estructuras de datos reutilizables y probadas para código rápido."
-project.cc-skills.title,Claude Code Skills,Skills para Claude Code
-project.cc-skills.role,AI tooling,Herramientas de IA
-project.cc-skills.desc,Skills that teach Claude Code new workflows.,Skills que enseñan nuevos flujos de trabajo a Claude Code.
+project.mini-lisp.title,Mini Lisp Interpreter,Intérprete de Mini Lisp
+project.mini-lisp.role,Language design,Diseño de lenguajes
+project.mini-lisp.desc,"A small Lisp: parser, evaluator and REPL.","Un Lisp pequeño: parser, evaluador y REPL."
+project.cc-agents.title,Claude Code & Agents,Claude Code y agentes
+project.cc-agents.role,AI tooling,Herramientas de IA
+project.cc-agents.desc,"Skills, workflows and agent orchestration.","Skills, flujos de trabajo y orquestación de agentes."
+project.minecraft.title,Minecraft Java Mods,Mods de Minecraft Java
+project.minecraft.role,Modding,Modding
+project.minecraft.desc,"Mods for Minecraft: Java Edition, published on Modrinth.","Mods para Minecraft: Java Edition, publicados en Modrinth."
+project.cp-instructor.title,Competitive Programming,Programación competitiva
+project.cp-instructor.role,Volunteer instructor,Instructor voluntario
+project.cp-instructor.desc,Teaching algorithms and problem solving to new contestants.,Enseño algoritmos y resolución de problemas a nuevos competidores.
+project.nixos.title,NixOS Configuration,Configuración de NixOS
+project.nixos.role,Linux · Nix,Linux · Nix
+project.nixos.desc,Declarative management of my machines with NixOS.,Administración declarativa de mis máquinas con NixOS.
+project.feria-unam.title,UNAM Science Fair 2023,Feria de Ciencias UNAM 2023
+project.feria-unam.role,3rd place,3.er lugar
+project.feria-unam.desc,Awarded third place among university projects.,Tercer lugar entre los proyectos universitarios.
+project.dotfiles.title,Wayland Dotfiles,Dotfiles para Wayland
+project.dotfiles.role,Linux desktop,Escritorio Linux
+project.dotfiles.desc,My Linux Wayland desktop setup.,La configuración de mi escritorio Linux con Wayland.
+project.tongue-kde.title,Tongue for KDE,Tongue para KDE
+project.tongue-kde.role,Desktop app,App de escritorio
+project.tongue-kde.desc,A native app for the KDE Plasma desktop.,Una app nativa para el escritorio KDE Plasma.
+project.java-libs.title,Java Libraries,Bibliotecas de Java
+project.java-libs.role,Java,Java
+project.java-libs.desc,Small reusable libraries for Java projects.,Bibliotecas pequeñas y reutilizables para proyectos en Java.
+project.rust-counter.title,Counter in Rust,Contador en Rust
+project.rust-counter.role,Rust,Rust
+project.rust-counter.desc,A small counter program written in Rust.,Un pequeño programa contador escrito en Rust.

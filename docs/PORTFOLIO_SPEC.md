@@ -221,7 +221,9 @@ Un **beat** por proyecto principal:
 4. Los secundarios salen hacia la cámara y por su borde; cuando ya van de salida, el siguiente principal crece hacia ese lado. Luego sale el principal actual y los nuevos secundarios ocupan el lado que dejó libre.
 
 - **Etiquetas** (rol en mono, título, una línea de descripción) siempre **debajo de su ventana**: HTML real colocado en 3D con `CSS3DRenderer`, traducido desde el CSV. Entran cuando la ventana se asienta y **viajan con ella hasta que sale**. Solo durante los cruces, una etiqueta tapada por una ventana más cercana se desvanece.
-- **Relleno** (`kind: 'filler'`): ventanas pequeñas, tenues y lejanas que cruzan el fondo sin pararse y sin etiqueta, para saturar el túnel. Sí aparecen en la escena 15.
+- **Pasillo** (Darshan, 27/11/2026): la sección simula avanzar por un pasillo de proyectos hasta la luz del fondo. Las ventanas cuelgan de sus paredes, **giradas levemente hacia el centro** (~16°, no más) y viajan en línea recta a lo largo de ellas: del fondo a su hueco y de ahí pasando junto a la cámara.
+- **Relleno** (`kind: 'filler'`): ventanas pequeñas y tenues que recorren ambas paredes **a muchas alturas** (cada proyecto de relleno pasa varias veces), sin pararse y sin etiqueta, y salen por el borde antes de llegar a la profundidad de los principales. Sí aparecen en la escena 15.
+- La **luz** nace en cuanto el último principal empieza a salir, sin pausa antes.
 - **Móvil (vertical)**: el principal abajo, los secundarios en una fila encima (solo título).
 - Esquinas redondeadas sutiles; la media se recorta como `object-fit: cover`. Ventanas sin video (`media: null`) muestran el póster.
 - Media de ejemplo ligera (MP4 de 4 s + pósters WebP, abstractos en la paleta) en `public/media/projects/`; Darshan la reemplaza con los mismos nombres.

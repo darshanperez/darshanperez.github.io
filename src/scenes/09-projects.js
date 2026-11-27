@@ -20,8 +20,11 @@ import { colors, ease } from '../styles/tokens.js';
 //      the side they free; then this main leaves and the next secondaries
 //      take its side.
 //
-// Labels are real HTML placed in 3D with CSS3D and travel with their window
-// until it leaves. Fillers drift dim and far behind everything, unlabeled.
+// The section reads as walking down a corridor toward the light: windows
+// hang on its walls, turned slightly toward the middle, and travel straight
+// along them (vanishing point → slot → past the camera). Labels are real HTML
+// placed in 3D with CSS3D and travel with their window until it leaves.
+// Fillers line both walls at many heights, dim and far, never stopping.
 //
 // After the last beat: a flat white light grows until it fills the screen
 // (bloom and halo belong to the SFX phase), then the page is white.
@@ -33,8 +36,8 @@ const RADIUS = 0.025; // corner radius, relative to the width (subtle)
 const FAR_Z = -42; // the vanishing point
 const DEPTH = { main: 0, secondary: -2.5, filler: -7 }; // z where each kind holds / passes
 const OUT_Z = { main: 6, secondary: 4, filler: -7 }; // z at the end of the exit
-const OPACITY = { main: 1, secondary: 0.55, filler: 0.22 };
-const TILT = { hold: 0.1, out: 0.55 }; // windows turn to face the center
+const OPACITY = { main: 1, secondary: 0.55, filler: 0.3 };
+const TILT = { hold: 0.28, out: 0.4 }; // like walls: turned slightly toward the middle
 
 // Timing, in viewports of scroll.
 // Exits accelerate (ease-exit), so each handoff waits until the windows that
@@ -47,19 +50,15 @@ const LEAVE = 0.8; // slot → out past the camera
 const SEC_STAGGER = 0.1; // between the secondaries leaving
 const HANDOFF = 0.55; // the next main arrives this long after the secondaries start leaving
 const MAIN_LEAVES = 0.35; // the main leaves this long after its secondaries
-const FILLER_TRIP = 2.6;
+const FILLER_TRIP = 2.4;
+const FILLER_END_Z = -3; // fillers slip off the screen's edge before the main windows' depth
 const LIGHT = 1.5;
 const WHITE = 0.5;
 
-// Where fillers drift to (screen directions): corners and edges.
-const FILLER_DIRS = [
-  [-1, 0.75],
-  [1, -0.8],
-  [0.35, 1],
-  [-0.9, -0.7],
-  [1, 0.6],
-  [-0.25, -1],
-];
+// Filler passes: each filler project goes down the corridor more than once,
+// alternating walls, at these heights (fractions of the half-height).
+const FILLER_PASSES = 16;
+const FILLER_HEIGHTS = [0.75, -0.55, 0.15, -0.9, 0.45, -0.2, 0.95, -0.7];
 
 /** Mains in order, each with its secondaries; loose secondaries go to the emptiest beat. */
 function groupBeats() {
@@ -82,18 +81,18 @@ const FILLERS = projects.filter((p) => p.kind === 'filler');
 /** Start/leave times of each beat, relative to the scene start. */
 function schedule() {
   let t = 0;
-  let end = 0;
   const times = BEATS.map(({ secondaries }) => {
     const start = t;
     const lastArrival = secondaries.length ? SEC_DELAY + STAGGER * (secondaries.length - 1) : 0;
     const leave = start + lastArrival + ARRIVE + HOLD;
     t = leave + HANDOFF;
-    end = leave + MAIN_LEAVES + LEAVE;
     return { start, leave };
   });
-  return { times, tunnel: end };
+  return { times };
 }
-const { times: BEAT_TIMES, tunnel: TUNNEL } = schedule();
+const { times: BEAT_TIMES } = schedule();
+// The light is born as the last main starts leaving, with no gap before it.
+const LIGHT_AT = BEAT_TIMES.at(-1).leave + MAIN_LEAVES;
 
 let windows = []; // every window: { project, kind, group, material, label?, video, hold, out, state, … }
 let beats = []; // { main: win, secondaries: [win], side }
@@ -102,7 +101,7 @@ let light;
 let css;
 let relayout = () => {};
 const posters = new Map(); // id → THREE.Texture
-const far = new THREE.Vector3(0, 0, FAR_Z);
+const far = new THREE.Vector3(0, 0, FAR_Z); // end of the corridor, where the light is born
 const corner = new THREE.Vector3();
 const scratch = {};
 
@@ -201,6 +200,7 @@ function createWindow(project, geometry, parent, cameraElement) {
     material,
     label,
     video: project.media ? createVideo(project, material) : null,
+    from: new THREE.Vector3(), // far end of the corridor
     hold: new THREE.Vector3(),
     out: new THREE.Vector3(),
     width: 1, // world units
@@ -266,8 +266,10 @@ function layout(ctx, W, H) {
     const z = DEPTH[w.kind];
     const p = ndc(cx, cy);
     w.hold.set(p.x * halfW(z), p.y * halfH(z), z);
+    w.from.set(w.hold.x, w.hold.y, FAR_Z); // straight down its wall line
     w.width = px / pxPerUnit(z);
-    w.tilt = Math.sign(p.x) || Math.sign(dir[0]) || 1;
+    // Which wall it hangs on; a centered window (portrait main) turns less.
+    w.tilt = Math.abs(p.x) < 0.15 ? Math.sign(dir[0]) * 0.4 : Math.sign(p.x);
     exitAlong(w, dir);
   }
 
@@ -336,13 +338,18 @@ function layout(ctx, W, H) {
     }
   }
 
-  // Fillers never hold: they drift from the vanishing point off screen.
-  const fw = Math.min(W, H * RATIO) * 0.16;
+  // Fillers never hold: they slide down the walls at many heights and slip
+  // off the screen's edge before reaching the main windows' depth.
+  const fw = Math.min(W, H * RATIO) * 0.18;
+  const ref = DEPTH.filler;
   fillers.forEach((w, i) => {
-    const dir = FILLER_DIRS[i % FILLER_DIRS.length];
-    w.width = fw / pxPerUnit(DEPTH.filler);
-    w.tilt = Math.sign(dir[0]);
-    exitAlong(w, dir);
+    const side = i % 2 ? 1 : -1;
+    const x = side * (halfW(ref) * 0.9 - 0.2 * (i % 3));
+    const y = FILLER_HEIGHTS[i % FILLER_HEIGHTS.length] * halfH(ref) * 0.8;
+    w.width = fw / pxPerUnit(ref);
+    w.tilt = side;
+    w.from.set(x, y, FAR_Z);
+    w.out.set(x, y, FILLER_END_Z);
   });
 }
 
@@ -352,15 +359,15 @@ function place(w) {
   const { a, e, o } = w.state;
   const g = w.group;
   if (w.kind === 'filler') {
-    g.position.lerpVectors(far, w.out, a);
-    g.rotation.y = -w.tilt * TILT.out * a;
+    g.position.lerpVectors(w.from, w.out, a);
+    g.rotation.y = -w.tilt * TILT.hold;
   } else {
-    // vanishing point → slot (a), then slot → out past the camera (e)
-    g.position.lerpVectors(far, w.hold, a);
+    // far end of its wall → slot (a), then slot → out past the camera (e)
+    g.position.lerpVectors(w.from, w.hold, a);
     g.position.x += (w.out.x - w.hold.x) * e;
     g.position.y += (w.out.y - w.hold.y) * e;
     g.position.z += (w.out.z - w.hold.z) * e;
-    g.rotation.y = -w.tilt * (TILT.hold * a + (TILT.out - TILT.hold) * e);
+    g.rotation.y = -w.tilt * (TILT.hold + (TILT.out - TILT.hold) * e);
   }
   g.scale.setScalar(w.width);
 
@@ -427,7 +434,7 @@ function occlude(camera, dt) {
 
 export default {
   id: 'projects',
-  scrollLength: TUNNEL + LIGHT + WHITE,
+  scrollLength: LIGHT_AT + LIGHT + WHITE,
 
   async load(ctx) {
     const loader = new THREE.TextureLoader();
@@ -458,7 +465,8 @@ export default {
       if (windows.some((w) => w.label?.visible)) css.render(scene, camera);
     });
 
-    fillers = FILLERS.map((p) => createWindow(p, geometry, world, cameraElement));
+    const passes = FILLERS.length ? Math.max(FILLER_PASSES, FILLERS.length) : 0;
+    fillers = Array.from({ length: passes }, (_, i) => createWindow(FILLERS[i % FILLERS.length], geometry, world, cameraElement));
     beats = BEATS.map((b, i) => ({
       main: createWindow(b.main, geometry, world, cameraElement),
       secondaries: b.secondaries.map((p) => createWindow(p, geometry, world, cameraElement)),
@@ -466,7 +474,7 @@ export default {
     }));
     windows = [...fillers, ...beats.flatMap((b) => [b.main, ...b.secondaries])];
 
-    light = new THREE.Mesh(new THREE.CircleGeometry(3, 64 * ctx.quality.segments), materials.light);
+    light = new THREE.Mesh(new THREE.CircleGeometry(3, 128 * ctx.quality.segments), materials.light);
     light.scale.setScalar(0);
     light.visible = false;
     world.add(light);
@@ -513,21 +521,21 @@ export default {
       leave(beat.main, start + l + MAIN_LEAVES);
     });
 
-    // Fillers: spread over the tunnel, always drifting toward the camera.
-    const spacing = (TUNNEL - FILLER_TRIP) / Math.max(1, fillers.length - 1);
+    // Fillers: spread over the corridor, always moving toward the camera.
+    const spacing = (LIGHT_AT + 0.6 - FILLER_TRIP) / Math.max(1, fillers.length - 1);
     fillers.forEach((w, i) => {
       const s = start + i * spacing;
       tl.to(w.state, { a: 1, duration: FILLER_TRIP, ease: ease.exit.gsap }, s)
         .to(w.state, { o: 1, duration: FILLER_TRIP * 0.25, ease: ease.enter.gsap }, s)
-        .to(w.state, { o: 0, duration: FILLER_TRIP * 0.2, ease: ease.exit.gsap }, s + FILLER_TRIP * 0.8);
+        .to(w.state, { o: 0, duration: FILLER_TRIP * 0.12, ease: ease.exit.gsap }, s + FILLER_TRIP * 0.88);
     });
 
-    ctx.cue(ctx.layer('projects').querySelector('.cue'), start + 0.2, start + TUNNEL);
+    ctx.cue(ctx.layer('projects').querySelector('.cue'), start + 0.2, start + LIGHT_AT + 0.4);
 
     // LIGHT — born at the vanishing point while the last windows leave, it
     // comes to the camera until it covers the screen; then the page turns white.
-    const lightAt = start + TUNNEL - LEAVE * 0.6;
-    const white = start + TUNNEL + LIGHT;
+    const lightAt = start + LIGHT_AT;
+    const white = lightAt + LIGHT;
     const z = ctx.HOME.position.z - 1;
     tl.set(light, { visible: true }, lightAt)
       .to(light.scale, { x: 1, y: 1, z: 1, duration: 0.6, ease: ease.enter.gsap }, lightAt)
